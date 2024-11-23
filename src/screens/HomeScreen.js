@@ -1,46 +1,47 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-} from 'react-native';
-import { Avatar, Card, Button, Appbar, BottomNavigation } from 'react-native-paper';
+import { View, Text, TextInput, StyleSheet, FlatList } from 'react-native';
+import { Card, Button, Appbar, BottomNavigation, SegmentedButtons, IconButton } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import SettingScreen from '../screens/SettingScreen';
+import AboutScreen from '../screens/AboutScreen';
 
-// Placeholder Data for Stations
-const stations = [
-  { id: '1', name: 'CNG Station 1', waitTime: '10 mins', distance: '2.5 km' },
-  { id: '2', name: 'EV Station A', waitTime: '5 mins', distance: '1.8 km' },
-  { id: '3', name: 'CNG Station 2', waitTime: '15 mins', distance: '3.2 km' },
+const evStations = [
+  { id: '2', name: 'EV Station 1', waitTime: '15 mins', distance: '1.8 km', type: 'EV' },
 ];
 
-// Placeholder Routes for Navigation
+const cngStations = [
+  { id: '1', name: 'CNG Station 1', waitTime: '10 mins', distance: '2.5 km', type: 'CNG' },
+  { id: '11', name: 'CNG Station 1', waitTime: '10 mins', distance: '2.5 km', type: 'CNG' },
+  { id: '112', name: 'CNG Station 1', waitTime: '10 mins', distance: '2.5 km', type: 'CNG' },
+];
+
+const petrolStations = [
+  { id: '3', name: 'Petrol Station 1', waitTime: '5 mins', distance: '3.0 km', type: 'Petrol/Diesel' },
+];
+
 const HomeRoute = () => <InteractiveHome />;
 const MapRoute = () => (
   <View style={styles.centered}>
-    <Text>Map View</Text>
-  </View>
-);
-const ProfileRoute = () => (
-  <View style={styles.centered}>
-    <Text>Profile Screen</Text>
-  </View>
-);
-const HistoryRoute = () => (
-  <View style={styles.centered}>
-    <Text>History Screen</Text>
-  </View>
-);
-const SettingsRoute = () => (
-  <View style={styles.centered}>
-    <Text>Settings Screen</Text>
+    <Text>Map Screen</Text>
   </View>
 );
 
+const SettingsRoute = ({ navigation }) => (
+  <SettingScreen navigation={navigation} />
+);
+
+const AboutRoute = () => <AboutScreen />;
+
 const InteractiveHome = () => {
+  const [stationType, setStationType] = useState('EV');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredStations = (stationType === 'EV' ? evStations :
+    stationType === 'CNG' ? cngStations :
+    petrolStations).filter(station =>
+      station.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
   const renderStationCard = ({ item }) => (
     <Card style={styles.stationCard}>
       <Card.Content>
@@ -60,36 +61,66 @@ const InteractiveHome = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <Appbar.Header>
-        <Appbar.Content title="FuelQ" />
-        <Avatar.Icon size={40} icon="account" style={styles.profileIcon} />
+        <Appbar.Content title={
+          <View style={styles.appTitleContainer}>
+            <Icon name="fire" size={30} color="red" />
+            <Text style={styles.appTitle}>FuelQ</Text>
+            <Icon name="fire" size={30} color="red" />
+          </View>
+        } />
       </Appbar.Header>
 
-      {/* Search Bar */}
-      <TextInput
-        style={styles.searchBar}
-        placeholder="Search for nearby stations..."
-        placeholderTextColor="#888"
+      <SegmentedButtons
+        value={stationType}
+        onValueChange={setStationType}
+        buttons={[
+          { 
+            value: 'EV', 
+            label: 'EV', 
+            icon: 'car-electric', 
+            style: { backgroundColor: '#4CAF50' } 
+          },
+          { 
+            value: 'Petrol/Diesel', 
+            label: 'Petrol', 
+            icon: 'gas-station', 
+            style: { backgroundColor: '#FFC107' } 
+          },
+          { 
+            value: 'CNG', 
+            label: 'CNG', 
+            icon: 'fire', 
+            style: { backgroundColor: '#2196F3' } 
+          },
+        ]}
+        style={styles.toggleButtons}
       />
 
-      {/* Nearby Stations Section */}
-      <Text style={styles.sectionTitle}>Nearby Stations</Text>
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchBar}
+          placeholder="Search for nearby stations..."
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <IconButton
+            icon="close-circle"
+            size={24}
+            onPress={() => setSearchQuery('')}
+            style={styles.clearButton}
+          />
+        )}
+      </View>
+
       <FlatList
-        data={stations}
+        data={filteredStations}
         renderItem={renderStationCard}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.stationList}
       />
-
-      {/* Map View Button */}
-      <TouchableOpacity
-        style={styles.mapButton}
-        onPress={() => alert('Navigating to Map View')}
-      >
-        <Icon name="map" size={24} color="#fff" />
-        <Text style={styles.mapButtonText}>Map View</Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -99,17 +130,15 @@ const HomeScreen = () => {
   const routes = [
     { key: 'home', title: 'Home', icon: 'home' },
     { key: 'map', title: 'Map', icon: 'map' },
-    { key: 'profile', title: 'Profile', icon: 'account' },
-    { key: 'history', title: 'History', icon: 'history' },
     { key: 'settings', title: 'Settings', icon: 'cog' },
+    { key: 'about', title: 'About', icon: 'information' },
   ];
 
   const renderScene = BottomNavigation.SceneMap({
     home: HomeRoute,
     map: MapRoute,
-    profile: ProfileRoute,
-    history: HistoryRoute,
     settings: SettingsRoute,
+    about: AboutRoute,
   });
 
   return (
@@ -117,6 +146,10 @@ const HomeScreen = () => {
       navigationState={{ index, routes }}
       onIndexChange={setIndex}
       renderScene={renderScene}
+      barStyle={styles.bottomNavBar}
+      renderIcon={({ route, focused, color }) => (
+        <Icon name={route.icon} size={24} color={color} />
+      )}
     />
   );
 };
@@ -124,15 +157,21 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f8f8' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
-  profileIcon: { backgroundColor: '#4CAF50' },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    margin: 16,
+  },
   searchBar: {
     height: 40,
-    margin: 16,
+    flex: 1,
     borderRadius: 8,
     paddingHorizontal: 12,
     backgroundColor: '#e8e8e8',
     color: '#333',
+  },
+  clearButton: {
+    marginLeft: 8,
   },
   sectionTitle: { fontSize: 16, fontWeight: 'bold', marginLeft: 16 },
   stationList: { paddingHorizontal: 16 },
@@ -145,17 +184,25 @@ const styles = StyleSheet.create({
   stationName: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
   stationDetails: { fontSize: 14, color: '#555' },
   detailsButton: { marginTop: 8 },
-  mapButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
+  bottomNavBar: {
     backgroundColor: '#4CAF50',
-    marginHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 16,
   },
-  mapButtonText: { color: '#fff', fontSize: 16, marginLeft: 8 },
+  toggleButtons: {
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  appTitleContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+  },
+  appTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'dark',
+    marginRight: 0,
+    fontFamily: 'Roboto',
+  },
 });
 
 export default HomeScreen;

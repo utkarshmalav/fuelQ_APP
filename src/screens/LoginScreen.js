@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { TextInput, Button, HelperText } from 'react-native-paper';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { CommonActions } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import firebaseConfig from '../../firebaseConfig';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -10,18 +13,24 @@ const LoginScreen = ({ navigation }) => {
 
   const auth = getAuth();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       setError('Both fields are required');
     } else {
       setError('');
-      signInWithEmailAndPassword(auth, email, password)
-        .then(() => {
-          navigation.navigate('Home');
-        })
-        .catch((error) => {
-          setError(error.message);
-        });
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        // Store login status in AsyncStorage
+        await AsyncStorage.setItem('isLoggedIn', 'true');
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+          })
+        );
+      } catch (err) {
+        setError('Invalid Email or Password!');
+      }
     }
   };
 

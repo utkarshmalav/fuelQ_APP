@@ -39,7 +39,11 @@ const SignupScreen = ({ navigation }) => {
         });
       })
       .catch((error) => {
-        setError(error.message);
+        if (error.code === 'auth/email-already-in-use') {
+          setError('This email is already registered. Please use a different email.');
+        } else {
+          setError(error.message);
+        }
       });
   };
 

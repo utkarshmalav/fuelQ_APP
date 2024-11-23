@@ -1,13 +1,23 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SplashScreen = ({ navigation }) => {
   useEffect(() => {
-    // Navigate to Home Screen after 2 seconds
+    const checkLoginStatus = async () => {
+      const isLoggedIn = await AsyncStorage.getItem('isLoggedIn');
+      console.log('Login Status:', isLoggedIn);  // Log the login status
+      if (isLoggedIn === 'true') {
+        navigation.replace('Home');
+      } else {
+        navigation.replace('Login');
+      }
+    };
+
     setTimeout(() => {
-      navigation.replace('Home');
+      checkLoginStatus();
     }, 2000);
-  }, []);
+  }, [navigation]);
 
   return (
     <View style={styles.container}>
