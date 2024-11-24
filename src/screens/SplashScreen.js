@@ -6,7 +6,7 @@ const SplashScreen = ({ navigation }) => {
   useEffect(() => {
     const checkLoginStatus = async () => {
       const isLoggedIn = await AsyncStorage.getItem('isLoggedIn');
-      console.log('Login Status:', isLoggedIn);  // Log the login status
+      console.log('Login Status:', isLoggedIn);
       if (isLoggedIn === 'true') {
         navigation.replace('Home');
       } else {

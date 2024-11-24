@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAuth, signOut } from 'firebase/auth';
@@ -7,30 +7,10 @@ import { Picker } from '@react-native-picker/picker';
 
 const SettingScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState(''); 
   const [description, setDescription] = useState('');
-  const [userEmail, setUserEmail] = useState('');
   const navigation = useNavigation();
   const auth = getAuth();
-
-  useEffect(() => {
-    // Retrieve email from AsyncStorage
-    const fetchEmail = async () => {
-      const email = await AsyncStorage.getItem('Identifier');
-      if (email) {
-        setUserEmail(email);
-      }
-    };
-    fetchEmail();
-  }, []);
-
-  const handleProfile = () => {
-    if (userEmail) {
-      Alert.alert('Profile', `Your Email: ${userEmail}`);
-    } else {
-      Alert.alert('Profile', 'Email not available.');
-    }
-  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -47,7 +27,6 @@ const SettingScreen = () => {
           onPress: async () => {
             try {
               await AsyncStorage.setItem('isLoggedIn', 'false');
-              await AsyncStorage.removeItem('userEmail'); // Clear email
               await signOut(auth);
               console.log('User logged out');
               navigation.replace('Splash');
@@ -92,7 +71,7 @@ const SettingScreen = () => {
     <View style={styles.container}>
       <Text style={styles.title}>Settings</Text>
 
-      <TouchableOpacity style={styles.button} onPress={handleProfile}>
+      <TouchableOpacity style={styles.button} onPress={() => Alert.alert('Profile')}>
         <Text style={styles.buttonText}>Profile</Text>
       </TouchableOpacity>
 
@@ -153,9 +132,9 @@ const SettingScreen = () => {
             />
 
             <TouchableOpacity
-              style={[styles.reportButton, { backgroundColor: category ? '#4CAF50' : '#ccc' }]}
+              style={[styles.reportButton, { backgroundColor: category ? '#4CAF50' : '#ccc' }]} 
               onPress={handleReport}
-              disabled={!category}
+              disabled={!category} 
             >
               <Text style={styles.buttonText}>Send</Text>
             </TouchableOpacity>
