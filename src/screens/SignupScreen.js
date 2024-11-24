@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { TextInput, Button, HelperText } from 'react-native-paper';
 import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { getDatabase, ref, set } from 'firebase/database';
 
 const SignupScreen = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -11,6 +12,7 @@ const SignupScreen = ({ navigation }) => {
   const [error, setError] = useState('');
 
   const auth = getAuth();
+  const database = getDatabase();
 
   const validateEmail = (email) => /\S+@\S+\.\S+/.test(email);
   const validatePassword = (password) => password.length >= 6;
@@ -35,7 +37,10 @@ const SignupScreen = ({ navigation }) => {
       .then((userCredential) => {
         const user = userCredential.user;
         sendEmailVerification(user).then(() => {
-          navigation.navigate('Login', { message: 'Verification link sent to your email. Please verify before logging in.' });
+          saveUserDetailsToRealtimeDatabase();
+          navigation.navigate('Login', {
+            message: 'Verification link sent to your email. Please verify before logging in.',
+          });
         });
       })
       .catch((error) => {
@@ -44,6 +49,22 @@ const SignupScreen = ({ navigation }) => {
         } else {
           setError(error.message);
         }
+      });
+  };
+
+  const saveUserDetailsToRealtimeDatabase = () => {
+    const sanitizedEmail = email.replace('.', '_'); // Replace '.' with '_' to use as key
+    const userRef = ref(database, `UserDetails/${sanitizedEmail}`);
+
+    set(userRef, {
+      Name: name,
+    })
+      .then(() => {
+        console.log('User details saved successfully.');
+      })
+      .catch((error) => {
+        setError('Failed to save user details. Please try again.');
+        console.error(error);
       });
   };
 

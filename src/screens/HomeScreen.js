@@ -1,22 +1,63 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, FlatList } from 'react-native';
-import { Card, Button, Appbar, BottomNavigation, SegmentedButtons, IconButton } from 'react-native-paper';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import SettingScreen from '../screens/SettingScreen';
-import AboutScreen from '../screens/AboutScreen';
+/** @format */
+
+import React, { useState } from "react";
+import { View, Text, TextInput, StyleSheet, FlatList } from "react-native";
+import {
+  Card,
+  Button,
+  Appbar,
+  BottomNavigation,
+  SegmentedButtons,
+  IconButton,
+} from "react-native-paper";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import SettingScreen from "../screens/SettingScreen";
+import AboutScreen from "../screens/AboutScreen";
+import DetailsScreen from "../screens/DetailsScreen"; // Ensure that DetailsScreen is imported
+import { useNavigation } from "@react-navigation/native";
 
 const evStations = [
-  { id: '2', name: 'EV Station 1', waitTime: '15 mins', distance: '1.8 km', type: 'EV' },
+  {
+    id: "2",
+    name: "EV Station 1",
+    waitTime: "15 mins",
+    distance: "1.8 km",
+    type: "EV",
+  },
 ];
 
 const cngStations = [
-  { id: '1', name: 'CNG Station 1', waitTime: '10 mins', distance: '2.5 km', type: 'CNG' },
-  { id: '11', name: 'CNG Station 1', waitTime: '10 mins', distance: '2.5 km', type: 'CNG' },
-  { id: '112', name: 'CNG Station 1', waitTime: '10 mins', distance: '2.5 km', type: 'CNG' },
+  {
+    id: "1",
+    name: "CNG Station 1",
+    waitTime: "10 mins",
+    distance: "2.5 km",
+    type: "CNG",
+  },
+  {
+    id: "11",
+    name: "CNG Station 2",
+    waitTime: "10 mins",
+    distance: "2.5 km",
+    type: "CNG",
+  },
+  {
+    id: "112",
+    name: "CNG Station 3",
+    waitTime: "10 mins",
+    distance: "2.5 km",
+    type: "CNG",
+  },
 ];
 
 const petrolStations = [
-  { id: '3', name: 'Petrol Station 1', waitTime: '5 mins', distance: '3.0 km', type: 'Petrol/Diesel' },
+  {
+    id: "3",
+    name: "Petrol Station 1",
+    waitTime: "5 mins",
+    distance: "3.0 km",
+    type: "Petrol/Diesel",
+  },
 ];
 
 const HomeRoute = () => <InteractiveHome />;
@@ -33,14 +74,19 @@ const SettingsRoute = ({ navigation }) => (
 const AboutRoute = () => <AboutScreen />;
 
 const InteractiveHome = () => {
-  const [stationType, setStationType] = useState('EV');
-  const [searchQuery, setSearchQuery] = useState('');
+  const navigation = useNavigation();
+  const [stationType, setStationType] = useState("EV");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredStations = (stationType === 'EV' ? evStations :
-    stationType === 'CNG' ? cngStations :
-    petrolStations).filter(station =>
-      station.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+  const filteredStations = (
+    stationType === "EV"
+      ? evStations
+      : stationType === "CNG"
+      ? cngStations
+      : petrolStations
+  ).filter((station) =>
+    station.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const renderStationCard = ({ item }) => (
     <Card style={styles.stationCard}>
@@ -50,10 +96,15 @@ const InteractiveHome = () => {
         <Text style={styles.stationDetails}>Distance: {item.distance}</Text>
         <Button
           mode="outlined"
-          onPress={() => alert(`Navigating to ${item.name}`)}
+          onPress={() =>
+            navigation.navigate("Details", {
+              stationId: item.id,
+              stationName: item.name,
+            })
+          }  // Pass stationId and stationName to Details screen
           style={styles.detailsButton}
         >
-          Details
+          View
         </Button>
       </Card.Content>
     </Card>
@@ -62,36 +113,38 @@ const InteractiveHome = () => {
   return (
     <View style={styles.container}>
       <Appbar.Header>
-        <Appbar.Content title={
-          <View style={styles.appTitleContainer}>
-            <Icon name="fire" size={30} color="red" />
-            <Text style={styles.appTitle}>FuelQ</Text>
-            <Icon name="fire" size={30} color="red" />
-          </View>
-        } />
+        <Appbar.Content
+          title={
+            <View style={styles.appTitleContainer}>
+              <Icon name="fire" size={30} color="red" />
+              <Text style={styles.appTitle}>FuelQ</Text>
+              <Icon name="fire" size={30} color="red" />
+            </View>
+          }
+        />
       </Appbar.Header>
 
       <SegmentedButtons
         value={stationType}
         onValueChange={setStationType}
         buttons={[
-          { 
-            value: 'EV', 
-            label: 'EV', 
-            icon: 'car-electric', 
-            style: { backgroundColor: '#4CAF50' } 
+          {
+            value: "EV",
+            label: "EV",
+            icon: "car-electric",
+            style: { backgroundColor: "#4CAF50" },
           },
-          { 
-            value: 'Petrol/Diesel', 
-            label: 'Petrol', 
-            icon: 'gas-station', 
-            style: { backgroundColor: '#FFC107' } 
+          {
+            value: "Petrol/Diesel",
+            label: "Petrol",
+            icon: "gas-station",
+            style: { backgroundColor: "#FFC107" },
           },
-          { 
-            value: 'CNG', 
-            label: 'CNG', 
-            icon: 'fire', 
-            style: { backgroundColor: '#2196F3' } 
+          {
+            value: "CNG",
+            label: "CNG",
+            icon: "fire",
+            style: { backgroundColor: "#2196F3" },
           },
         ]}
         style={styles.toggleButtons}
@@ -109,7 +162,7 @@ const InteractiveHome = () => {
           <IconButton
             icon="close-circle"
             size={24}
-            onPress={() => setSearchQuery('')}
+            onPress={() => setSearchQuery("")}
             style={styles.clearButton}
           />
         )}
@@ -128,10 +181,10 @@ const InteractiveHome = () => {
 const HomeScreen = () => {
   const [index, setIndex] = useState(0);
   const routes = [
-    { key: 'home', title: 'Home', icon: 'home' },
-    { key: 'map', title: 'Map', icon: 'map' },
-    { key: 'settings', title: 'Settings', icon: 'cog' },
-    { key: 'about', title: 'About', icon: 'information' },
+    { key: "home", title: "Home", icon: "home" },
+    { key: "map", title: "Map", icon: "map" },
+    { key: "settings", title: "Settings", icon: "cog" },
+    { key: "about", title: "About", icon: "information" },
   ];
 
   const renderScene = BottomNavigation.SceneMap({
@@ -155,11 +208,11 @@ const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f8f8' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: "#f8f8f8" },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     margin: 16,
   },
   searchBar: {
@@ -167,41 +220,41 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#e8e8e8',
-    color: '#333',
+    backgroundColor: "#e8e8e8",
+    color: "#333",
   },
   clearButton: {
     marginLeft: 8,
   },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', marginLeft: 16 },
+  sectionTitle: { fontSize: 16, fontWeight: "bold", marginLeft: 16 },
   stationList: { paddingHorizontal: 16 },
   stationCard: {
     marginBottom: 12,
     borderRadius: 8,
     elevation: 2,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
-  stationName: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-  stationDetails: { fontSize: 14, color: '#555' },
+  stationName: { fontSize: 16, fontWeight: "bold", marginBottom: 4 },
+  stationDetails: { fontSize: 14, color: "#555" },
   detailsButton: { marginTop: 8 },
   bottomNavBar: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
   },
   toggleButtons: {
     marginHorizontal: 16,
     marginVertical: 8,
   },
-  appTitleContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
+  appTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   appTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: 'dark',
+    fontWeight: "bold",
+    color: "dark",
     marginRight: 0,
-    fontFamily: 'Roboto',
+    fontFamily: "Roboto",
   },
 });
 
