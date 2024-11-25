@@ -20,12 +20,12 @@ const LoginScreen = ({ navigation }) => {
       setError('');
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        // Store login status in AsyncStorage
+
         await AsyncStorage.setItem('isLoggedIn', 'true');
         navigation.dispatch(
           CommonActions.reset({
             index: 0,
-            routes: [{ name: 'Home' }],
+            routes: [{ name: 'Home', params: { email } }],
           })
         );
       } catch (err) {
@@ -33,6 +33,7 @@ const LoginScreen = ({ navigation }) => {
       }
     }
   };
+  
 
   return (
     <View style={styles.container}>

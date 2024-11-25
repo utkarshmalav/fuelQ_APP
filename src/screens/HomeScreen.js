@@ -1,7 +1,14 @@
 /** @format */
 
 import React, { useState } from "react";
-import { View, Text, TextInput, StyleSheet, FlatList } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  FlatList,
+  Image,
+} from "react-native";
 import {
   Card,
   Button,
@@ -13,15 +20,15 @@ import {
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import SettingScreen from "../screens/SettingScreen";
 import AboutScreen from "../screens/AboutScreen";
-import DetailsScreen from "../screens/DetailsScreen"; // Ensure that DetailsScreen is imported
 import { useNavigation } from "@react-navigation/native";
+import { ref, listAll, getDownloadURL } from "firebase/storage";
 
 const evStations = [
   {
-    id: "2",
-    name: "EV Station 1",
-    waitTime: "15 mins",
-    distance: "1.8 km",
+    id: "1",
+    name: "DYP",
+    waitTime: "0 mins",
+    distance: "0 km",
     type: "EV",
   },
 ];
@@ -29,23 +36,9 @@ const evStations = [
 const cngStations = [
   {
     id: "1",
-    name: "CNG Station 1",
-    waitTime: "10 mins",
-    distance: "2.5 km",
-    type: "CNG",
-  },
-  {
-    id: "11",
-    name: "CNG Station 2",
-    waitTime: "10 mins",
-    distance: "2.5 km",
-    type: "CNG",
-  },
-  {
-    id: "112",
-    name: "CNG Station 3",
-    waitTime: "10 mins",
-    distance: "2.5 km",
+    name: "STATION1",
+    waitTime: "0 mins",
+    distance: "0 km",
     type: "CNG",
   },
 ];
@@ -53,10 +46,10 @@ const cngStations = [
 const petrolStations = [
   {
     id: "3",
-    name: "Petrol Station 1",
-    waitTime: "5 mins",
-    distance: "3.0 km",
-    type: "Petrol/Diesel",
+    name: "STATION1",
+    waitTime: "0 mins",
+    distance: "0 km",
+    type: "PETROL",
   },
 ];
 
@@ -70,7 +63,6 @@ const MapRoute = () => (
 const SettingsRoute = ({ navigation }) => (
   <SettingScreen navigation={navigation} />
 );
-
 const AboutRoute = () => <AboutScreen />;
 
 const InteractiveHome = () => {
@@ -100,8 +92,9 @@ const InteractiveHome = () => {
             navigation.navigate("Details", {
               stationId: item.id,
               stationName: item.name,
+              stationCategory: stationType,
             })
-          }  // Pass stationId and stationName to Details screen
+          }
           style={styles.detailsButton}
         >
           View
@@ -135,7 +128,7 @@ const InteractiveHome = () => {
             style: { backgroundColor: "#4CAF50" },
           },
           {
-            value: "Petrol/Diesel",
+            value: "PETROL",
             label: "Petrol",
             icon: "gas-station",
             style: { backgroundColor: "#FFC107" },
@@ -178,6 +171,47 @@ const InteractiveHome = () => {
   );
 };
 
+const DetailsScreen = ({ route, navigation }) => {
+  const { stationId, stationName, stationCategory } = route.params;
+  const [imageUrl, setImageUrl] = useState(null);
+  const [imageName, setImageName] = useState(null);
+
+  const handleFetch = async () => {
+    try {
+      const folderRef = ref(storage, "PETROL");
+      const fileList = await listAll(folderRef);
+      const randomFile =
+        fileList.items[Math.floor(Math.random() * fileList.items.length)];
+      const url = await getDownloadURL(randomFile);
+      setImageUrl(url);
+      setImageName(randomFile.name);
+    } catch (error) {}
+  };
+
+  return (
+    <View style={styles.container}>
+      <Appbar.Header style={styles.appbar}>
+        <Appbar.BackAction onPress={() => navigation.goBack()} />
+        <Appbar.Content title={<Text style={styles.appTitle}>FuelQ</Text>} />
+      </Appbar.Header>
+      <View style={styles.detailsContainer}>
+        <Text style={styles.stationName}>Station: {stationName}</Text>
+        <Text style={styles.stationCategory}>Category: {stationCategory}</Text>
+        <Button title="Fetch" onPress={handleFetch} />
+        {imageUrl && (
+          <>
+            <Image
+              source={{ uri: imageUrl }}
+              style={{ width: 300, height: 200, marginTop: 20 }}
+            />
+            <Text style={styles.imageName}>Image Name: {imageName}</Text>
+          </>
+        )}
+      </View>
+    </View>
+  );
+};
+
 const HomeScreen = () => {
   const [index, setIndex] = useState(0);
   const routes = [
@@ -210,11 +244,7 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f8f8f8" },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    margin: 16,
-  },
+  searchContainer: { flexDirection: "row", alignItems: "center", margin: 16 },
   searchBar: {
     height: 40,
     flex: 1,
@@ -223,10 +253,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#e8e8e8",
     color: "#333",
   },
-  clearButton: {
-    marginLeft: 8,
-  },
-  sectionTitle: { fontSize: 16, fontWeight: "bold", marginLeft: 16 },
+  clearButton: { marginLeft: 8 },
   stationList: { paddingHorizontal: 16 },
   stationCard: {
     marginBottom: 12,
@@ -237,13 +264,8 @@ const styles = StyleSheet.create({
   stationName: { fontSize: 16, fontWeight: "bold", marginBottom: 4 },
   stationDetails: { fontSize: 14, color: "#555" },
   detailsButton: { marginTop: 8 },
-  bottomNavBar: {
-    backgroundColor: "#4CAF50",
-  },
-  toggleButtons: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-  },
+  bottomNavBar: { backgroundColor: "#4CAF50" },
+  toggleButtons: { marginHorizontal: 16, marginVertical: 8 },
   appTitleContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -256,6 +278,10 @@ const styles = StyleSheet.create({
     marginRight: 0,
     fontFamily: "Roboto",
   },
+  detailsContainer: { padding: 16 },
+  stationCategory: { fontSize: 18, color: "#555", marginVertical: 10 },
+  appbar: { backgroundColor: "#4CAF50" },
+  imageName: { fontSize: 16, marginTop: 8 },
 });
 
 export default HomeScreen;

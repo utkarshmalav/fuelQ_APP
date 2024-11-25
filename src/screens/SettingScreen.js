@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  TextInput,
+  Modal,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAuth, signOut } from 'firebase/auth';
 import { useNavigation } from '@react-navigation/native';
@@ -7,8 +15,12 @@ import { Picker } from '@react-native-picker/picker';
 
 const SettingScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
-  const [category, setCategory] = useState(''); 
+  const [profileVisible, setProfileVisible] = useState(false);
+  const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const navigation = useNavigation();
   const auth = getAuth();
 
@@ -67,53 +79,120 @@ const SettingScreen = () => {
     }
   };
 
+  const handleProfileSave = () => {
+    Alert.alert(
+      'Confirm Save',
+      'Are you sure you want to save these changes?',
+      [
+        {
+          text: 'Cancel',
+          onPress: () => console.log('Save canceled'),
+          style: 'cancel',
+        },
+        {
+          text: 'Save',
+          onPress: () => {
+            setProfileVisible(false);
+            Alert.alert('Saved', 'Profile updated successfully.');
+          },
+        },
+      ],
+      { cancelable: false }
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Settings</Text>
 
-      <TouchableOpacity style={styles.button} onPress={() => Alert.alert('Profile')}>
+      {/* Profile Section */}
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => setProfileVisible(true)}
+      >
         <Text style={styles.buttonText}>Profile</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => setModalVisible(true)}
+      >
         <Text style={styles.buttonText}>Report</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={[styles.button, styles.logoutButton]} onPress={handleLogout}>
+      <TouchableOpacity
+        style={[styles.button, styles.logoutButton]}
+        onPress={handleLogout}
+      >
         <Text style={[styles.buttonText, styles.logoutText]}>Logout</Text>
       </TouchableOpacity>
 
+      {/* Profile Modal */}
+      <Modal
+        visible={profileVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setProfileVisible(false)}
+      >
+        <View style={stylesProfile.modalContainer}>
+          <View style={stylesProfile.profileModalContent}>
+            <Text style={stylesProfile.modalTitle}>Edit Profile</Text>
+
+            <TextInput
+              style={stylesProfile.input}
+              placeholder="Name"
+              value={name}
+              onChangeText={setName}
+            />
+
+            <TextInput
+              style={stylesProfile.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+            />
+
+            <TextInput
+              style={stylesProfile.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+
+            <TouchableOpacity
+              style={stylesProfile.saveButton}
+              onPress={handleProfileSave}
+            >
+              <Text style={stylesProfile.buttonText}>Save</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={stylesProfile.cancelButton}
+              onPress={() => setProfileVisible(false)}
+            >
+              <Text style={stylesProfile.buttonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Report Modal */}
       <Modal
         visible={modalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => {
-          Alert.alert(
-            'Cancel Report',
-            'Are you sure you want to cancel?',
-            [
-              {
-                text: 'No',
-                onPress: () => console.log('Cancel'),
-                style: 'cancel',
-              },
-              {
-                text: 'Yes',
-                onPress: () => setModalVisible(false),
-              },
-            ],
-            { cancelable: false }
-          );
-        }}
+        onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.reportModalContent}>
-            <Text style={styles.modalTitle}>Report Issue</Text>
+        <View style={stylesReport.modalContainer}>
+          <View style={stylesReport.reportModalContent}>
+            <Text style={stylesReport.modalTitle}>Report Issue</Text>
 
             <Picker
               selectedValue={category}
               onValueChange={(itemValue) => setCategory(itemValue)}
-              style={[styles.reportPicker, { borderColor: category ? '#ccc' : 'red' }]}
+              style={stylesReport.picker}
             >
               <Picker.Item label="Select Category" value="" />
               <Picker.Item label="Wrong Info" value="wrong_info" />
@@ -123,27 +202,25 @@ const SettingScreen = () => {
             </Picker>
 
             <TextInput
-              style={styles.reportInputDescription}
+              style={stylesReport.input}
               placeholder="Describe"
               value={description}
               onChangeText={setDescription}
               multiline
-              numberOfLines={4}
             />
 
             <TouchableOpacity
-              style={[styles.reportButton, { backgroundColor: category ? '#4CAF50' : '#ccc' }]} 
+              style={stylesReport.submitButton}
               onPress={handleReport}
-              disabled={!category} 
             >
-              <Text style={styles.buttonText}>Send</Text>
+              <Text style={stylesReport.buttonText}>Submit</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.reportButton, styles.cancelButton]}
+              style={stylesReport.cancelButton}
               onPress={() => setModalVisible(false)}
             >
-              <Text style={styles.buttonText}>Close</Text>
+              <Text style={stylesReport.buttonText}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -152,42 +229,90 @@ const SettingScreen = () => {
   );
 };
 
+// Common Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f8f8f8',
-    padding: 20,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
     marginBottom: 30,
   },
   button: {
     width: '80%',
     paddingVertical: 12,
-    marginBottom: 15,
     backgroundColor: '#4CAF50',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
+    marginBottom: 15,
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '600',
   },
   logoutButton: {
     backgroundColor: '#FF6347',
   },
   logoutText: {
     fontWeight: '700',
-    color: '#fff',
   },
+});
+
+// Profile Styles
+const stylesProfile = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  profileModalContent: {
+    width: '80%',
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  input: {
+    width: '100%',
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 15,
+  },
+  saveButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#FF6347',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+});
+
+// Report Styles
+const stylesReport = StyleSheet.create({
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -206,34 +331,40 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  reportPicker: {
+  picker: {
     width: '100%',
-    height: 70,
-    marginBottom: 15,
+    height: 60,
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 8,
+    marginBottom: 15,
   },
-  reportInputDescription: {
+  input: {
     width: '100%',
     height: 100,
-    borderColor: '#ccc',
     borderWidth: 1,
+    borderColor: '#ccc',
     borderRadius: 8,
     paddingHorizontal: 10,
-    marginBottom: 15,
     textAlignVertical: 'top',
+    marginBottom: 15,
   },
-  reportButton: {
-    width: '100%',
+  submitButton: {
+    backgroundColor: '#4CAF50',
     paddingVertical: 12,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: 10,
+    alignItems: 'center',
   },
   cancelButton: {
     backgroundColor: '#FF6347',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
   },
 });
 
