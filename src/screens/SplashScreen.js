@@ -16,13 +16,13 @@ const SplashScreen = ({ navigation }) => {
 
     setTimeout(() => {
       checkLoginStatus();
-    }, 2000);
+    }, 3000);
   }, [navigation]);
 
   return (
     <View style={styles.container}>
       <Image source={require('../../assets/logo.png')} style={styles.logo} />
-      <Text style={styles.tagline}>Smart Queue Prediction</Text>
+      <Text style={styles.tagline}>FuelQ: Smart Solution for Long Queues</Text>
     </View>
   );
 };

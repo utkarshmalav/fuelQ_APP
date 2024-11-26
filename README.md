@@ -1,1 +1,0 @@
-# fuelQ_APP

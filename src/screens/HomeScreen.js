@@ -1,5 +1,3 @@
-/** @format */
-
 import React, { useState } from "react";
 import {
   View,
@@ -7,7 +5,6 @@ import {
   TextInput,
   StyleSheet,
   FlatList,
-  Image,
 } from "react-native";
 import {
   Card,
@@ -21,7 +18,6 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import SettingScreen from "../screens/SettingScreen";
 import AboutScreen from "../screens/AboutScreen";
 import { useNavigation } from "@react-navigation/native";
-import { ref, listAll, getDownloadURL } from "firebase/storage";
 
 const evStations = [
   {
@@ -36,7 +32,7 @@ const evStations = [
 const cngStations = [
   {
     id: "1",
-    name: "STATION1",
+    name: "CNG1",
     waitTime: "0 mins",
     distance: "0 km",
     type: "CNG",
@@ -46,26 +42,27 @@ const cngStations = [
 const petrolStations = [
   {
     id: "3",
-    name: "STATION1",
+    name: "PETROL1",
     waitTime: "0 mins",
     distance: "0 km",
     type: "PETROL",
   },
 ];
 
-const HomeRoute = () => <InteractiveHome />;
+const HomeRoute = ({ email }) => <InteractiveHome email={email} />;
 const MapRoute = () => (
   <View style={styles.centered}>
     <Text>Map Screen</Text>
   </View>
 );
 
-const SettingsRoute = ({ navigation }) => (
-  <SettingScreen navigation={navigation} />
+const SettingsRoute = ({ navigation, route }) => (
+  <SettingScreen navigation={navigation} route={route} />
 );
+
 const AboutRoute = () => <AboutScreen />;
 
-const InteractiveHome = () => {
+const InteractiveHome = ({ email }) => {
   const navigation = useNavigation();
   const [stationType, setStationType] = useState("EV");
   const [searchQuery, setSearchQuery] = useState("");
@@ -171,60 +168,21 @@ const InteractiveHome = () => {
   );
 };
 
-const DetailsScreen = ({ route, navigation }) => {
-  const { stationId, stationName, stationCategory } = route.params;
-  const [imageUrl, setImageUrl] = useState(null);
-  const [imageName, setImageName] = useState(null);
-
-  const handleFetch = async () => {
-    try {
-      const folderRef = ref(storage, "PETROL");
-      const fileList = await listAll(folderRef);
-      const randomFile =
-        fileList.items[Math.floor(Math.random() * fileList.items.length)];
-      const url = await getDownloadURL(randomFile);
-      setImageUrl(url);
-      setImageName(randomFile.name);
-    } catch (error) {}
-  };
-
-  return (
-    <View style={styles.container}>
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title={<Text style={styles.appTitle}>FuelQ</Text>} />
-      </Appbar.Header>
-      <View style={styles.detailsContainer}>
-        <Text style={styles.stationName}>Station: {stationName}</Text>
-        <Text style={styles.stationCategory}>Category: {stationCategory}</Text>
-        <Button title="Fetch" onPress={handleFetch} />
-        {imageUrl && (
-          <>
-            <Image
-              source={{ uri: imageUrl }}
-              style={{ width: 300, height: 200, marginTop: 20 }}
-            />
-            <Text style={styles.imageName}>Image Name: {imageName}</Text>
-          </>
-        )}
-      </View>
-    </View>
-  );
-};
-
-const HomeScreen = () => {
+const HomeScreen = ({ route }) => {
+  const email = route?.params?.email || "Guest";
   const [index, setIndex] = useState(0);
+
   const routes = [
     { key: "home", title: "Home", icon: "home" },
     { key: "map", title: "Map", icon: "map" },
-    { key: "settings", title: "Settings", icon: "cog" },
+    { key: "settings", title: "Settings", icon: "cog", params: { email } },
     { key: "about", title: "About", icon: "information" },
   ];
 
   const renderScene = BottomNavigation.SceneMap({
-    home: HomeRoute,
+    home: (props) => <HomeRoute email={email} {...props} />,
     map: MapRoute,
-    settings: SettingsRoute,
+    settings: (props) => <SettingsRoute {...props} />,
     about: AboutRoute,
   });
 
@@ -278,10 +236,6 @@ const styles = StyleSheet.create({
     marginRight: 0,
     fontFamily: "Roboto",
   },
-  detailsContainer: { padding: 16 },
-  stationCategory: { fontSize: 18, color: "#555", marginVertical: 10 },
-  appbar: { backgroundColor: "#4CAF50" },
-  imageName: { fontSize: 16, marginTop: 8 },
 });
 
 export default HomeScreen;
