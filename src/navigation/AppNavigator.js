@@ -9,6 +9,7 @@ import SettingScreen from "../screens/SettingScreen";
 import AboutScreen from "../screens/AboutScreen";
 import DetailsScreen from "../screens/DetailsScreen";
 import MapScreen from "../screens/MapScreen";
+import MainScreen from "../screens/MainScreen"
 
 const Stack = createStackNavigator();
 
@@ -24,6 +25,7 @@ const AppNavigator = () => {
         <Stack.Screen name="About" component={AboutScreen} />
         <Stack.Screen name="Details" component={DetailsScreen} />
         <Stack.Screen name="Map" component={MapScreen} />
+        <Stack.Screen name="Main" component={MainScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
