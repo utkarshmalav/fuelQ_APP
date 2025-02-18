@@ -1,11 +1,5 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  FlatList,
-} from "react-native";
+import { View, Text, TextInput, StyleSheet, FlatList } from "react-native";
 import {
   Card,
   Button,
@@ -17,6 +11,7 @@ import {
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import SettingScreen from "../screens/SettingScreen";
 import AboutScreen from "../screens/AboutScreen";
+import MapScreen from "../screens/MapScreen";
 import { useNavigation } from "@react-navigation/native";
 
 const evStations = [
@@ -50,12 +45,8 @@ const petrolStations = [
 ];
 
 const HomeRoute = ({ email }) => <InteractiveHome email={email} />;
-const MapRoute = () => (
-  <View style={styles.centered}>
-    <Text>Map Screen</Text>
-  </View>
-);
 
+const MapRoute = () => <MapScreen />;
 const SettingsRoute = ({ navigation, route }) => (
   <SettingScreen navigation={navigation} route={route} />
 );

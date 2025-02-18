@@ -65,7 +65,8 @@ const LoginScreen = ({ navigation }) => {
         style={styles.input}
         keyboardType="email-address"
         value={email}
-        onChangeText={setEmail}
+        // onChangeText={setEmail}
+        onChangeText={(text) => setEmail(text.toLowerCase())}
       />
       <TextInput
         label="Password"

@@ -24,3 +24,5 @@ npm install react-native-screens@^4.3.0
 npm install react-native-vector-icons@^10.2.0
 npm install react-navigation-stack@^2.10.4
 npm install @babel/core@^7.20.0 --save-dev
+npm install react-native-google-places-autocomplete
+npm install @expo/vector-icons
