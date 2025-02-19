@@ -18,7 +18,12 @@ const cngStations = [
 ];
 const petrolStations = [
   {
-    id: "3", name: "PETROL", waitTime: "0 mins", distance: "0 km", type: "PETROL" },
+    id: "3",
+    name: "PETROL",
+    waitTime: "0 mins",
+    distance: "0 km",
+    type: "PETROL",
+  },
 ];
 
 const MainScreen = ({ email }) => {

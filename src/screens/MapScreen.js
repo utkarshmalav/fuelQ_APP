@@ -1,22 +1,90 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { Appbar } from "react-native-paper";
+import {
+  View,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Text,
+} from "react-native";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
+import Constants from "expo-constants";
+import {
+  MenuProvider,
+  Menu,
+  MenuOptions,
+  MenuOption,
+  MenuTrigger,
+} from "react-native-popup-menu";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 const MapScreen = () => {
+  const googleMapsApiKey =
+    Constants.expoConfig?.extra?.googleMapsApiKey || "API Key not found";
+
   return (
-    <View style={styles.container}>
-      <MapView
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        initialRegion={{
-          latitude: 16.7320901,
-          longitude: 74.237955,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
-      />
-    </View>
+    <MenuProvider>
+      <View style={styles.container}>
+        <MapView
+          provider={PROVIDER_GOOGLE}
+          style={styles.map}
+          initialRegion={{
+            latitude: 16.7320901,
+            longitude: 74.237955,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
+        />
+        <View style={styles.searchContainer}>
+          <Icon
+            name="magnify"
+            size={24}
+            color="gray"
+            style={styles.searchIcon}
+          />
+          <TextInput
+            style={styles.searchBar}
+            placeholder="Search location"
+            placeholderTextColor="gray"
+          />
+          <Menu>
+            <MenuTrigger>
+              <Icon
+                name="filter"
+                size={24}
+                color="gray"
+                style={styles.filterIcon}
+              />
+            </MenuTrigger>
+            <MenuOptions style={styles.menuOptions}>
+              <View style={styles.menuHeader}>
+                <Text style={styles.menuHeaderText}>Sort by</Text>
+              </View>
+              <MenuOption onSelect={() => alert("EV Station")}>
+                <View style={styles.menuItem}>
+                  <Icon name="car-electric" size={20} color="green" />
+                  <Text style={styles.menuText}> Nearest EV Station</Text>
+                </View>
+              </MenuOption>
+              <MenuOption onSelect={() => alert("CNG Station")}>
+                <View style={styles.menuItem}>
+                  <Icon name="fire" size={20} color="red" />
+                  <Text style={styles.menuText}> Nearest CNG Station</Text>
+                </View>
+              </MenuOption>
+              <MenuOption onSelect={() => alert("Petrol Pump")}>
+                <View style={styles.menuItem}>
+                  <Icon name="gas-station" size={20} color="blue" />
+                  <Text style={styles.menuText}> Nearest Petrol Pump</Text>
+                </View>
+              </MenuOption>
+            </MenuOptions>
+          </Menu>
+        </View>
+        <TouchableOpacity style={styles.locationButton}>
+          <Icon name="crosshairs-gps" size={32} color="#007AFF" />
+        </TouchableOpacity>
+      </View>
+    </MenuProvider>
   );
 };
 
@@ -25,13 +93,70 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8f8f8",
   },
-  title: {
-    fontSize: 22,
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    position: "absolute",
+    top: 35,
+    left: 15,
+    right: 15,
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    paddingHorizontal: 15,
+    height: 50,
+    elevation: 5,
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchBar: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+  },
+  filterIcon: {
+    marginLeft: 10,
+  },
+  menuOptions: {
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 10,
+    elevation: 5,
+    width: 210,
+  },
+  menuHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+    paddingBottom: 5,
+    marginBottom: 5,
+  },
+  menuHeaderText: {
+    fontSize: 18,
     fontWeight: "bold",
     textAlign: "center",
   },
-  map: {
-    flex: 1,
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+  },
+  menuText: {
+    fontSize: 16,
+    marginLeft: 10,
+  },
+  locationButton: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    backgroundColor: "#fff",
+    padding: 8,
+    borderRadius: 50,
+    elevation: 3,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 
