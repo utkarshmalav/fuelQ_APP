@@ -10,7 +10,7 @@ import {
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { useNavigation } from "@react-navigation/native";
 import { storage } from "../../firebaseConfig";
-import { ref, listAll } from "firebase/storage";
+import { ref, listAll, getDownloadURL, getMetadata } from "firebase/storage";
 
 const MainScreen = ({ email }) => {
   const navigation = useNavigation();
@@ -26,13 +26,22 @@ const MainScreen = ({ email }) => {
       const folderRef = ref(storage, category);
       const result = await listAll(folderRef); 
 
-      const stations = result.prefixes.map((folder) => ({
-        id: folder.fullPath,
-        name: folder.name, 
-        waitTime: "0 mins",
-        distance: "0 km",
-        type: category,
-      }));
+      const stations = await Promise.all(
+        result.prefixes.map(async (folder) => {
+          const stationName = folder.name;
+          const stationId = folder.fullPath;
+          
+          const waitTime = await fetchLatestWaitTime(category, stationName);
+          
+          return {
+            id: stationId,
+            name: stationName,
+            waitTime: waitTime || "N/A",
+            distance: "0 KM",
+            type: category,
+          };
+        })
+      );
 
       setStations(stations);
     } catch (error) {
@@ -40,12 +49,57 @@ const MainScreen = ({ email }) => {
     }
   };
 
+  const fetchLatestWaitTime = async (category, stationName) => {
+    try {
+      const stationRef = ref(storage, `${category}/${stationName}`);
+      const fileList = await listAll(stationRef);
+
+      if (fileList.items.length === 0) return "N/A";
+
+      const fileData = await Promise.all(
+        fileList.items.map(async (file) => {
+          const metadata = await getMetadata(file);
+          return { file, timeCreated: new Date(metadata.timeCreated).getTime() };
+        })
+      );
+
+      fileData.sort((a, b) => b.timeCreated - a.timeCreated);
+      const latestFile = fileData[0].file;
+
+      const [countPart] = latestFile.name.replace(".jpg", "").split("_");
+      const vehicleCount = parseInt(countPart.replace("C", "")) || 1;
+
+      return calculateEstimatedTime(vehicleCount, category);
+    } catch (error) {
+      console.error(`Error fetching wait time for ${stationName}:`, error);
+      return "N/A";
+    }
+  };
+
+  const calculateEstimatedTime = (vehicleCount, category) => {
+    let time = 0;
+
+    switch (category) {
+      case "EV":
+        time = vehicleCount * 10;
+        break;
+      case "PETROL":
+        time = vehicleCount * 0.5;
+        break;
+      case "CNG":
+        time = vehicleCount * 3;
+        break;
+      default:
+        time = "N/A";
+    }
+    return `${time} Min`;
+  };
+
   useEffect(() => {
     fetchStations("EV", setEvStations);
     fetchStations("CNG", setCngStations);
     fetchStations("PETROL", setPetrolStations);
   }, []);
-
 
   const filteredStations = (
     stationType === "EV"

@@ -1,4 +1,4 @@
-import { ref, listAll, getDownloadURL } from "firebase/storage";
+import { ref, listAll, getDownloadURL, getMetadata } from "firebase/storage";
 import { storage } from "../../firebaseConfig";
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Button, Image } from "react-native";
@@ -11,23 +11,36 @@ const DetailsScreen = ({ route, navigation }) => {
   const [vehicleCounts, setVehicleCounts] = useState([]);
   const [timestamps, setTimestamps] = useState([]);
   const [estimatedTime, setEstimatedTime] = useState("");
-  
+
   const fetchImages = async () => {
     try {
       const folderRef = ref(storage, `${stationCategory}/${stationName}`);
       const fileList = await listAll(folderRef);
-      const sortedFiles = fileList.items.sort((a, b) => b._timeCreated - a._timeCreated);
-      const latestFiles = sortedFiles.slice(0, 2);
-      const urls = await Promise.all(latestFiles.map((file) => getDownloadURL(file)));
+
+      const fileData = await Promise.all(
+        fileList.items.map(async (file) => {
+          const metadata = await getMetadata(file);
+          return {
+            file,
+            timeCreated: new Date(metadata.timeCreated).getTime(),
+          };
+        })
+      );
+
+      fileData.sort((a, b) => b.timeCreated - a.timeCreated);
+
+      const latestFiles = fileData.slice(0, 2);
+
+      const urls = await Promise.all(latestFiles.map(({ file }) => getDownloadURL(file)));
       setImages(urls);
 
-      const counts = latestFiles.map((file) => {
+      const counts = latestFiles.map(({ file }) => {
         const [countPart] = file.name.replace(".jpg", "").split("_");
         return countPart.replace("C", "");
       });
       setVehicleCounts(counts);
 
-      const times = latestFiles.map((file) => {
+      const times = latestFiles.map(({ file }) => {
         const [, timePart, datePart] = file.name.replace(".jpg", "").split("_");
         const time = timePart.replace(/-/g, ":");
         const date = datePart.replace(/-/g, "/");
@@ -75,15 +88,15 @@ const DetailsScreen = ({ route, navigation }) => {
         <Appbar.BackAction onPress={() => navigation.goBack()} />
         <Appbar.Content title={<Text style={styles.appTitle}>FuelQ</Text>} />
       </Appbar.Header>
+
       <View style={styles.detailsContainer}>
         <Text style={styles.stationName}>Station: {stationName}</Text>
         <Text style={styles.estimatedTimeText}>
           Waiting Time: {estimatedTime} (Estimated)
         </Text>
-        <Text style={styles.estimatedTimeText}>
-          Distance : -
-        </Text>
+        <Text style={styles.estimatedTimeText}>Distance: -</Text>
         <Button title="Refresh" onPress={handleRefresh} />
+
         {images.length > 0 && (
           <>
             {images.map((url, index) => (
