@@ -47,18 +47,12 @@ const MapScreen = () => {
         },
         (newLocation) => {
           setLocation(newLocation.coords);
-          setRegion((prevRegion) => ({
-            ...prevRegion,
-            latitude: newLocation.coords.latitude,
-            longitude: newLocation.coords.longitude,
-          }));
         }
       );
 
-      return () => locationSubscription.remove(); 
+      return () => locationSubscription.remove();
     })();
   }, []);
-
 
   const recenterMap = () => {
     if (location) {
@@ -78,10 +72,10 @@ const MapScreen = () => {
           provider={PROVIDER_GOOGLE}
           style={styles.map}
           region={region}
-          showsUserLocation={true} 
-          followsUserLocation={true}
-          showsCompass={true} 
-          showsMyLocationButton={true} 
+          showsUserLocation={true}
+          showsCompass={true}
+          showsMyLocationButton={false}
+          onRegionChangeComplete={(newRegion) => setRegion(newRegion)}
         />
 
         <View style={styles.searchContainer}>
