@@ -1,12 +1,14 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
   TextInput,
   TouchableOpacity,
   Text,
+  Alert,
 } from "react-native";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
+import * as Location from "expo-location";
 import Constants from "expo-constants";
 import {
   MenuProvider,
@@ -21,19 +23,67 @@ const MapScreen = () => {
   const googleMapsApiKey =
     Constants.expoConfig?.extra?.googleMapsApiKey || "API Key not found";
 
+  const [location, setLocation] = useState(null);
+  const [region, setRegion] = useState({
+    latitude: 16.7320901,
+    longitude: 74.237955,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
+
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Denied", "Location permission is required.");
+        return;
+      }
+
+      const locationSubscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 5000,
+          distanceInterval: 10,
+        },
+        (newLocation) => {
+          setLocation(newLocation.coords);
+          setRegion((prevRegion) => ({
+            ...prevRegion,
+            latitude: newLocation.coords.latitude,
+            longitude: newLocation.coords.longitude,
+          }));
+        }
+      );
+
+      return () => locationSubscription.remove(); 
+    })();
+  }, []);
+
+
+  const recenterMap = () => {
+    if (location) {
+      setRegion({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+    }
+  };
+
   return (
     <MenuProvider>
       <View style={styles.container}>
         <MapView
           provider={PROVIDER_GOOGLE}
           style={styles.map}
-          initialRegion={{
-            latitude: 16.7320901,
-            longitude: 74.237955,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }}
+          region={region}
+          showsUserLocation={true} 
+          followsUserLocation={true}
+          showsCompass={true} 
+          showsMyLocationButton={true} 
         />
+
         <View style={styles.searchContainer}>
           <Icon
             name="magnify"
@@ -80,7 +130,8 @@ const MapScreen = () => {
             </MenuOptions>
           </Menu>
         </View>
-        <TouchableOpacity style={styles.locationButton}>
+
+        <TouchableOpacity style={styles.locationButton} onPress={recenterMap}>
           <Icon name="crosshairs-gps" size={32} color="#007AFF" />
         </TouchableOpacity>
       </View>
