@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TextInput, StyleSheet, FlatList } from "react-native";
 import {
   Card,
@@ -9,27 +9,43 @@ import {
 } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { useNavigation } from "@react-navigation/native";
-
-const evStations = [
-  { id: "1", name: "DYP", waitTime: "0 mins", distance: "0 km", type: "EV" },
-];
-const cngStations = [
-  { id: "2", name: "CNG", waitTime: "0 mins", distance: "0 km", type: "CNG" },
-];
-const petrolStations = [
-  {
-    id: "3",
-    name: "PETROL",
-    waitTime: "0 mins",
-    distance: "0 km",
-    type: "PETROL",
-  },
-];
+import { storage } from "../../firebaseConfig";
+import { ref, listAll } from "firebase/storage";
 
 const MainScreen = ({ email }) => {
   const navigation = useNavigation();
   const [stationType, setStationType] = useState("EV");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [evStations, setEvStations] = useState([]);
+  const [cngStations, setCngStations] = useState([]);
+  const [petrolStations, setPetrolStations] = useState([]);
+
+  const fetchStations = async (category, setStations) => {
+    try {
+      const folderRef = ref(storage, category);
+      const result = await listAll(folderRef); 
+
+      const stations = result.prefixes.map((folder) => ({
+        id: folder.fullPath,
+        name: folder.name, 
+        waitTime: "0 mins",
+        distance: "0 km",
+        type: category,
+      }));
+
+      setStations(stations);
+    } catch (error) {
+      console.error(`Error fetching ${category} stations:`, error);
+    }
+  };
+
+  useEffect(() => {
+    fetchStations("EV", setEvStations);
+    fetchStations("CNG", setCngStations);
+    fetchStations("PETROL", setPetrolStations);
+  }, []);
+
 
   const filteredStations = (
     stationType === "EV"
