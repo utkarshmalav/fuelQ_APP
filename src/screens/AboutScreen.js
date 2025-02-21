@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, ScrollView, Image } from "react-native";
 import { Appbar, Card } from "react-native-paper";
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 const AboutScreen = () => {
   return (
@@ -28,9 +28,9 @@ const AboutScreen = () => {
                 <Text style={styles.role}>(Project Guide)</Text>
               </View>
               <Text style={styles.text}>
-                We would like to thank our project guide, Professor K.T. Mane, for
-                his valuable guidance and support throughout the development of
-                this project.
+                We would like to thank our project guide, Professor K.T. Mane,
+                for his valuable guidance and support throughout the development
+                of this project.
               </Text>
             </Card.Content>
           </Card>
@@ -39,10 +39,10 @@ const AboutScreen = () => {
             <Card.Content>
               <Text style={styles.title}>About this Project</Text>
               <Text style={styles.text}>
-                This app, named FuelQ, is designed to solve the long queue issues
-                at fuel stations, particularly CNG and EV stations. It allows
-                users to check the estimated waiting time at fuel stations in
-                real-time.
+                This app, named FuelQ, is designed to solve the long queue
+                issues at fuel stations, particularly CNG and EV stations. It
+                allows users to check the estimated waiting time at fuel
+                stations in real-time.
               </Text>
             </Card.Content>
           </Card>
@@ -53,8 +53,8 @@ const AboutScreen = () => {
               <Text style={styles.text}>
                 This app was created by Group 10 students as their final year
                 project at D.Y. Patil College of Engineering & Technology,
-                Kolhapur. The project was developed under the guidance of Prof. KT
-                Mane Sir in the year 2024-2025.
+                Kolhapur. The project was developed under the guidance of Prof.
+                KT Mane Sir in the year 2024-2025.
               </Text>
             </Card.Content>
           </Card>
@@ -83,7 +83,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flex: 1,
-
   },
   appTitle: {
     fontSize: 22,

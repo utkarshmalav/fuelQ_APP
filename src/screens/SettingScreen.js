@@ -87,13 +87,19 @@ const SettingScreen = ({ route }) => {
               // Upload the report to Firebase Realtime Database
               try {
                 const formattedEmail = email.replace(".", "_");
-                const reportRef = ref(db, `UserReport/${category}/${formattedEmail}`);
+                const reportRef = ref(
+                  db,
+                  `UserReport/${category}/${formattedEmail}`
+                );
                 await set(reportRef, {
                   description: description,
                   timestamp: new Date().toISOString(),
                 });
 
-                Alert.alert("Report Submitted", "Your report has been submitted.");
+                Alert.alert(
+                  "Report Submitted",
+                  "Your report has been submitted."
+                );
               } catch (error) {
                 Alert.alert("Error", "Failed to submit the report.");
                 console.error("Error uploading report:", error);
@@ -160,7 +166,10 @@ const SettingScreen = ({ route }) => {
               onChangeText={setName}
             />
             <Text
-              style={[stylesProfile.input, { color: "gray", paddingVertical: 10 }]}
+              style={[
+                stylesProfile.input,
+                { color: "gray", paddingVertical: 10 },
+              ]}
             >
               {email}
             </Text>
@@ -224,7 +233,6 @@ const SettingScreen = ({ route }) => {
     </View>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {

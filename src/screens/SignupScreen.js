@@ -69,30 +69,36 @@ const SignupScreen = ({ navigation }) => {
         updateProfile(user, {
           displayName: name,
         })
-        .then(() => {
-          sendEmailVerification(user)
-            .then(() => {
-              saveUserDetailsToRealtimeDatabase();
-              console.log("Verification link sent!"); 
-              setSuccessMessage("Verification link sent to your email. Please verify before logging in.");
-              setTimeout(() => {
-                setSuccessMessage(""); 
-                navigation.navigate("Login");
-              }, 5000);
-            })
-            .catch((error) => {
-              setError("Failed to send verification email. Please try again.");
-              console.error(error);
-            });
-        })
-        .catch((error) => {
-          setError("Failed to update user profile.");
-          console.error(error);
-        });
+          .then(() => {
+            sendEmailVerification(user)
+              .then(() => {
+                saveUserDetailsToRealtimeDatabase();
+                console.log("Verification link sent!");
+                setSuccessMessage(
+                  "Verification link sent to your email. Please verify before logging in."
+                );
+                setTimeout(() => {
+                  setSuccessMessage("");
+                  navigation.navigate("Login");
+                }, 5000);
+              })
+              .catch((error) => {
+                setError(
+                  "Failed to send verification email. Please try again."
+                );
+                console.error(error);
+              });
+          })
+          .catch((error) => {
+            setError("Failed to update user profile.");
+            console.error(error);
+          });
       })
       .catch((error) => {
         if (error.code === "auth/email-already-in-use") {
-          setError("This email is already registered. Please use a different email.");
+          setError(
+            "This email is already registered. Please use a different email."
+          );
         } else {
           setError(error.message);
         }

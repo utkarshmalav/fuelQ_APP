@@ -24,15 +24,15 @@ const MainScreen = ({ email }) => {
   const fetchStations = async (category, setStations) => {
     try {
       const folderRef = ref(storage, category);
-      const result = await listAll(folderRef); 
+      const result = await listAll(folderRef);
 
       const stations = await Promise.all(
         result.prefixes.map(async (folder) => {
           const stationName = folder.name;
           const stationId = folder.fullPath;
-          
+
           const waitTime = await fetchLatestWaitTime(category, stationName);
-          
+
           return {
             id: stationId,
             name: stationName,
@@ -59,7 +59,10 @@ const MainScreen = ({ email }) => {
       const fileData = await Promise.all(
         fileList.items.map(async (file) => {
           const metadata = await getMetadata(file);
-          return { file, timeCreated: new Date(metadata.timeCreated).getTime() };
+          return {
+            file,
+            timeCreated: new Date(metadata.timeCreated).getTime(),
+          };
         })
       );
 
@@ -96,10 +99,14 @@ const MainScreen = ({ email }) => {
   };
 
   useEffect(() => {
-    fetchStations("EV", setEvStations);
-    fetchStations("CNG", setCngStations);
-    fetchStations("PETROL", setPetrolStations);
-  }, []);
+    if (stationType === "EV") {
+      fetchStations("EV", setEvStations);
+    } else if (stationType === "CNG") {
+      fetchStations("CNG", setCngStations);
+    } else if (stationType === "PETROL") {
+      fetchStations("PETROL", setPetrolStations);
+    }
+  }, [stationType]);
 
   const filteredStations = (
     stationType === "EV"

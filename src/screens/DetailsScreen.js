@@ -31,7 +31,9 @@ const DetailsScreen = ({ route, navigation }) => {
 
       const latestFiles = fileData.slice(0, 2);
 
-      const urls = await Promise.all(latestFiles.map(({ file }) => getDownloadURL(file)));
+      const urls = await Promise.all(
+        latestFiles.map(({ file }) => getDownloadURL(file))
+      );
       setImages(urls);
 
       const counts = latestFiles.map(({ file }) => {

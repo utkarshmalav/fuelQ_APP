@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   StyleSheet,
@@ -24,12 +24,7 @@ const MapScreen = () => {
     Constants.expoConfig?.extra?.googleMapsApiKey || "API Key not found";
 
   const [location, setLocation] = useState(null);
-  const [region, setRegion] = useState({
-    latitude: 16.7320901,
-    longitude: 74.237955,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  });
+  const mapRef = useRef(null);
 
   useEffect(() => {
     (async () => {
@@ -55,13 +50,16 @@ const MapScreen = () => {
   }, []);
 
   const recenterMap = () => {
-    if (location) {
-      setRegion({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      });
+    if (location && mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        2000
+      );
     }
   };
 
@@ -69,13 +67,30 @@ const MapScreen = () => {
     <MenuProvider>
       <View style={styles.container}>
         <MapView
+          ref={mapRef}
           provider={PROVIDER_GOOGLE}
           style={styles.map}
-          region={region}
+          initialRegion={{
+            latitude: 16.7320901,
+            longitude: 74.237955,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
           showsUserLocation={true}
           showsCompass={true}
           showsMyLocationButton={false}
-          onRegionChangeComplete={(newRegion) => setRegion(newRegion)}
+          customMapStyle={[
+            { featureType: "poi.business", stylers: [{ visibility: "off" }] },
+            { featureType: "poi.medical", stylers: [{ visibility: "off" }] },
+            { featureType: "poi.school", stylers: [{ visibility: "off" }] },
+            { featureType: "poi.park", stylers: [{ visibility: "off" }] },
+            {
+              featureType: "poi.place_of_worship",
+              stylers: [{ visibility: "off" }],
+            },
+            { featureType: "road", stylers: [{ visibility: "on" }] },
+            { featureType: "transit", stylers: [{ visibility: "off" }] },
+          ]}
         />
 
         <View style={styles.searchContainer}>

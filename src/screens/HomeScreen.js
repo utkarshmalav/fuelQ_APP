@@ -30,7 +30,9 @@ const HomeScreen = ({ route }) => {
       onIndexChange={setIndex}
       renderScene={renderScene}
       barStyle={{ backgroundColor: "#4CAF50" }}
-      renderIcon={({ route, color }) => <Icon name={route.icon} size={24} color={color} />}
+      renderIcon={({ route, color }) => (
+        <Icon name={route.icon} size={24} color={color} />
+      )}
     />
   );
 };
