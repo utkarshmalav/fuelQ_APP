@@ -1,13 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  View,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  Text,
-  Alert,
-} from "react-native";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
+import { View, StyleSheet, TouchableOpacity, Text, Alert } from "react-native";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import Constants from "expo-constants";
 import {
@@ -18,6 +11,7 @@ import {
   MenuTrigger,
 } from "react-native-popup-menu";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import StationData from "./StationData.js";
 
 const MapScreen = () => {
   const googleMapsApiKey =
@@ -80,31 +74,50 @@ const MapScreen = () => {
           showsCompass={true}
           showsMyLocationButton={false}
           customMapStyle={[
-            { featureType: "poi.business", stylers: [{ visibility: "off" }] },
-            { featureType: "poi.medical", stylers: [{ visibility: "off" }] },
-            { featureType: "poi.school", stylers: [{ visibility: "off" }] },
-            { featureType: "poi.park", stylers: [{ visibility: "off" }] },
-            {
-              featureType: "poi.place_of_worship",
-              stylers: [{ visibility: "off" }],
-            },
-            { featureType: "road", stylers: [{ visibility: "on" }] },
+            { featureType: "poi", stylers: [{ visibility: "off" }] },
             { featureType: "transit", stylers: [{ visibility: "off" }] },
+            { featureType: "road", stylers: [{ visibility: "on" }] },
+            { featureType: "administrative", stylers: [{ visibility: "off" }] },
           ]}
-        />
+        >
+          {StationData.map((station) => {
+            let iconName = "gas-station";
+            let iconColor = "blue";
 
-        <View style={styles.searchContainer}>
-          <Icon
-            name="magnify"
-            size={24}
-            color="gray"
-            style={styles.searchIcon}
-          />
-          <TextInput
-            style={styles.searchBar}
-            placeholder="Search location"
-            placeholderTextColor="gray"
-          />
+            if (station.petrol || station.diesel) {
+              iconName = "gas-station";
+              iconColor = "blue";
+            } else if (station.ev) {
+              iconName = "car-electric";
+              iconColor = "green";
+            } else if (station.cng) {
+              iconName = "fire";
+              iconColor = "red";
+            }
+
+            let availableTypes = [];
+            if (station.petrol) availableTypes.push("Petrol");
+            if (station.diesel) availableTypes.push("Diesel");
+            if (station.cng) availableTypes.push("CNG");
+            if (station.ev) availableTypes.push("EV");
+
+            return (
+              <Marker
+                key={station.id}
+                coordinate={{
+                  latitude: station.latitude,
+                  longitude: station.longitude,
+                }}
+                title={station.name}
+                description={"Available : " + availableTypes.join(", ")}
+              >
+                <Icon name={iconName} size={22} color={iconColor} />
+              </Marker>
+            );
+          })}
+        </MapView>
+
+        <View style={styles.filterContainer}>
           <Menu>
             <MenuTrigger>
               <Icon
@@ -156,29 +169,10 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    position: "absolute",
-    top: 35,
-    left: 15,
-    right: 15,
-    backgroundColor: "#fff",
-    borderRadius: 15,
-    paddingHorizontal: 15,
-    height: 50,
-    elevation: 5,
-  },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchBar: {
-    flex: 1,
-    height: 40,
-    fontSize: 16,
-  },
+
+ 
   filterIcon: {
-    marginLeft: 10,
+    alignSelf: "center",
   },
   menuOptions: {
     backgroundColor: "#fff",
@@ -186,6 +180,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     elevation: 5,
     width: 210,
+    position: "absolute",
+    right: 0,
+    bottom: 15,
   },
   menuHeader: {
     borderBottomWidth: 1,
@@ -207,14 +204,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginLeft: 10,
   },
+
   locationButton: {
     position: "absolute",
-    bottom: 10,
+    bottom: 15,
     right: 10,
     backgroundColor: "#fff",
     padding: 8,
     borderRadius: 50,
     elevation: 3,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterContainer: {
+    position: "absolute",
+    bottom: 75,
+    right: 10,
+    backgroundColor: "#fff",
+    borderRadius: 50,
+    padding: 10,
+    elevation: 5,
     justifyContent: "center",
     alignItems: "center",
   },
