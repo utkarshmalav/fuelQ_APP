@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, TouchableOpacity, Text, Alert } from "react-native";
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  Text,
+  Alert,
+  TextInput,
+  ScrollView,
+} from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import Constants from "expo-constants";
@@ -11,14 +19,21 @@ import {
   MenuTrigger,
 } from "react-native-popup-menu";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import StationData from "./StationData.js";
+import StationData from "./StationData.js"; // Ensure this file is correct
 
 const MapScreen = () => {
   const googleMapsApiKey =
     Constants.expoConfig?.extra?.googleMapsApiKey || "API Key not found";
 
-  const [location, setLocation] = useState(null);
+  const [location, setLocation] = useState({
+    latitude: 0,
+    longitude: 0,
+  });
+  const [selectedFilter, setSelectedFilter] = useState("all");
+  const [searchText, setSearchText] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
   const mapRef = useRef(null);
+  const markerRefs = useRef({});
 
   useEffect(() => {
     (async () => {
@@ -35,7 +50,7 @@ const MapScreen = () => {
           distanceInterval: 10,
         },
         (newLocation) => {
-          setLocation(newLocation.coords);
+          setLocation(newLocation.coords); // Update location state when the location changes
         }
       );
 
@@ -47,8 +62,8 @@ const MapScreen = () => {
     if (location && mapRef.current) {
       mapRef.current.animateToRegion(
         {
-          latitude: location.latitude,
-          longitude: location.longitude,
+          latitude: location.latitude || 0, // If no location, use 0
+          longitude: location.longitude || 0, // If no location, use 0
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         },
@@ -57,9 +72,132 @@ const MapScreen = () => {
     }
   };
 
+  const handleSearch = () => {
+    const matches = StationData.filter((station) =>
+      station.name.toLowerCase().includes(searchText.toLowerCase())
+    );
+    setSearchResults(matches);
+  };
+
+  const goToStation = (station) => {
+    setSearchText("");
+    setSearchResults([]);
+    if (mapRef.current) {
+      mapRef.current.animateToRegion(
+        {
+          latitude: station.latitude,
+          longitude: station.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        },
+        1000
+      );
+    }
+    setTimeout(() => {
+      markerRefs.current[station.id]?.showCallout();
+    }, 1200);
+  };
+
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in km
+    return distance;
+  };
+
+  const filteredStations = StationData.filter((station) => {
+    if (selectedFilter === "all") return true;
+    if (selectedFilter === "petrol") return station.petrol || station.diesel;
+    if (selectedFilter === "cng") return station.cng;
+    if (selectedFilter === "ev") return station.ev;
+    return false;
+  });
+
+  const addDistanceToStations = (stations) => {
+    return stations.map((station) => {
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        station.latitude,
+        station.longitude
+      );
+      return { ...station, distance };
+    });
+  };
+
+  useEffect(() => {
+    if (searchText.trim() === "") {
+      setSearchResults([]);
+    } else {
+      handleSearch();
+    }
+  }, [searchText]);
+
+  const stationsWithDistance = addDistanceToStations(filteredStations);
+
   return (
     <MenuProvider>
       <View style={styles.container}>
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search station..."
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+            {searchText !== "" && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchText("");
+                  setSearchResults([]);
+                }}
+              >
+                <Icon name="close" size={22} color="gray" />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={handleSearch}>
+              <Icon
+                name="magnify"
+                size={24}
+                color="gray"
+                style={{ marginRight: 10 }}
+              />
+            </TouchableOpacity>
+          </View>
+          {searchText !== "" && (
+            <ScrollView style={styles.searchResults} nestedScrollEnabled={true}>
+              {searchResults.length === 0 ? (
+                <View style={styles.noResults}>
+                  <Text style={{ textAlign: "center", color: "#888" }}>
+                    No results found
+                  </Text>
+                </View>
+              ) : (
+                searchResults.map((station) => (
+                  <TouchableOpacity
+                    key={station.id}
+                    onPress={() => goToStation(station)}
+                    style={styles.searchResultItem}
+                  >
+                    <Text>
+                      {station.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          )}
+        </View>
+
         <MapView
           ref={mapRef}
           provider={PROVIDER_GOOGLE}
@@ -80,7 +218,7 @@ const MapScreen = () => {
             { featureType: "administrative", stylers: [{ visibility: "off" }] },
           ]}
         >
-          {StationData.map((station) => {
+          {stationsWithDistance.map((station) => {
             let iconName = "gas-station";
             let iconColor = "blue";
 
@@ -104,12 +242,15 @@ const MapScreen = () => {
             return (
               <Marker
                 key={station.id}
+                ref={(ref) => (markerRefs.current[station.id] = ref)}
                 coordinate={{
                   latitude: station.latitude,
                   longitude: station.longitude,
                 }}
                 title={station.name}
-                description={"Available : " + availableTypes.join(", ")}
+                description={`${availableTypes.join(
+                  ", "
+                )} (${station.distance.toFixed(2)} km)`}
               >
                 <Icon name={iconName} size={22} color={iconColor} />
               </Marker>
@@ -131,22 +272,48 @@ const MapScreen = () => {
               <View style={styles.menuHeader}>
                 <Text style={styles.menuHeaderText}>Sort by</Text>
               </View>
-              <MenuOption onSelect={() => alert("EV Station")}>
-                <View style={styles.menuItem}>
+              <MenuOption onSelect={() => setSelectedFilter("all")}>
+                <View
+                  style={[
+                    styles.menuItem,
+                    selectedFilter === "all" && styles.selectedMenuItem,
+                  ]}
+                >
+                  <Icon name="filter-outline" size={20} color="black" />
+                  <Text style={styles.menuText}> Show All</Text>
+                </View>
+              </MenuOption>
+              <MenuOption onSelect={() => setSelectedFilter("ev")}>
+                <View
+                  style={[
+                    styles.menuItem,
+                    selectedFilter === "ev" && styles.selectedMenuItem,
+                  ]}
+                >
                   <Icon name="car-electric" size={20} color="green" />
-                  <Text style={styles.menuText}> Nearest EV Station</Text>
+                  <Text style={styles.menuText}> Nearby EV Stations</Text>
                 </View>
               </MenuOption>
-              <MenuOption onSelect={() => alert("CNG Station")}>
-                <View style={styles.menuItem}>
+              <MenuOption onSelect={() => setSelectedFilter("cng")}>
+                <View
+                  style={[
+                    styles.menuItem,
+                    selectedFilter === "cng" && styles.selectedMenuItem,
+                  ]}
+                >
                   <Icon name="fire" size={20} color="red" />
-                  <Text style={styles.menuText}> Nearest CNG Station</Text>
+                  <Text style={styles.menuText}> Nearby CNG Stations</Text>
                 </View>
               </MenuOption>
-              <MenuOption onSelect={() => alert("Petrol Pump")}>
-                <View style={styles.menuItem}>
+              <MenuOption onSelect={() => setSelectedFilter("petrol")}>
+                <View
+                  style={[
+                    styles.menuItem,
+                    selectedFilter === "petrol" && styles.selectedMenuItem,
+                  ]}
+                >
                   <Icon name="gas-station" size={20} color="blue" />
-                  <Text style={styles.menuText}> Nearest Petrol Pump</Text>
+                  <Text style={styles.menuText}> Nearby Petrol Pumps</Text>
                 </View>
               </MenuOption>
             </MenuOptions>
@@ -169,8 +336,6 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-
- 
   filterIcon: {
     alignSelf: "center",
   },
@@ -202,9 +367,14 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 16,
-    marginLeft: 10,
+    marginLeft: 8,
   },
-
+  selectedMenuItem: {
+    backgroundColor: "#e0e0e0",
+    borderRadius: 5,
+    padding: 0,
+    width: 190,
+  },
   locationButton: {
     position: "absolute",
     bottom: 15,
@@ -221,10 +391,45 @@ const styles = StyleSheet.create({
     bottom: 75,
     right: 10,
     backgroundColor: "#fff",
-    borderRadius: 50,
     padding: 10,
+    borderRadius: 50,
+    elevation: 3,
+  },
+  searchContainer: {
+    position: "absolute",
+    top: 40,
+    left: 10,
+    right: 10,
+    zIndex: 1,
+  },
+  searchBar: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    padding: 3,
+    borderRadius: 30,
+    alignItems: "center",
+    elevation: 1,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
+    paddingLeft: 10,
+  },
+  searchResults: {
+    maxHeight: 200,
+    backgroundColor: "#fff",
+    borderRadius: 10,
     elevation: 5,
-    justifyContent: "center",
+    marginTop: 10,
+  },
+  searchResultItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+  },
+  noResults: {
+    padding: 20,
     alignItems: "center",
   },
 });

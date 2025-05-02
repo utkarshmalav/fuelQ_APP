@@ -19,13 +19,17 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.uttumalav.FuelQ"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "googleMapsApiKey": "AIzaSyB0PfVT4yYDFaN-pHwye5GpsBHYkC2i4rc"
+      "googleMapsApiKey": "AIzaSyB0PfVT4yYDFaN-pHwye5GpsBHYkC2i4rc",
+      "eas": {
+        "projectId": "649ccb9e-43d2-4d6f-b85a-b32237848390"
+      }
     }
   }
 }

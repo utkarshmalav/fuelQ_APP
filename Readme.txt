@@ -26,3 +26,5 @@ npm install react-navigation-stack@^2.10.4
 npm install @babel/core@^7.20.0 --save-dev
 npm install @expo/vector-icons@^14.0.4
 npm install react-native-popup-menu
+npm install geolib@^3.3.4
+npm install react-native-maps-directions
