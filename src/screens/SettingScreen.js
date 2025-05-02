@@ -84,7 +84,6 @@ const SettingScreen = ({ route }) => {
             onPress: async () => {
               setModalVisible(false);
 
-              // Upload the report to Firebase Realtime Database
               try {
                 const formattedEmail = email.replace(".", "_");
                 const reportRef = ref(

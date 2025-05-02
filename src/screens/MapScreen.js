@@ -19,7 +19,7 @@ import {
   MenuTrigger,
 } from "react-native-popup-menu";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import StationData from "./StationData.js"; // Ensure this file is correct
+import StationData from "./StationData.js"; 
 
 const MapScreen = () => {
   const googleMapsApiKey =
@@ -50,7 +50,7 @@ const MapScreen = () => {
           distanceInterval: 10,
         },
         (newLocation) => {
-          setLocation(newLocation.coords); // Update location state when the location changes
+          setLocation(newLocation.coords); 
         }
       );
 
@@ -62,8 +62,8 @@ const MapScreen = () => {
     if (location && mapRef.current) {
       mapRef.current.animateToRegion(
         {
-          latitude: location.latitude || 0, // If no location, use 0
-          longitude: location.longitude || 0, // If no location, use 0
+          latitude: location.latitude || 0, 
+          longitude: location.longitude || 0, 
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         },
@@ -99,7 +99,7 @@ const MapScreen = () => {
   };
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Radius of the Earth in km
+    const R = 6371; 
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
     const a =
@@ -109,7 +109,7 @@ const MapScreen = () => {
         Math.sin(dLon / 2) *
         Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; // Distance in km
+    const distance = R * c; 
     return distance;
   };
 
