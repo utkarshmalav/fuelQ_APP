@@ -21,7 +21,7 @@ export const getRoadDistance = async (origin, destination) => {
     });
 
     const data = await response.json();
-    console.log("OpenRouteService Response:", JSON.stringify(data, null, 2));
+    //console.log("OpenRouteService Response:", JSON.stringify(data, null, 2));
 
     const distanceInMeters = data?.routes?.[0]?.segments?.[0]?.distance;
     

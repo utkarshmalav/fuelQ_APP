@@ -5,9 +5,8 @@ import { View, Text, StyleSheet, Button, Image } from "react-native";
 import { Appbar } from "react-native-paper";
 
 const DetailsScreen = ({ route, navigation }) => {
-  const { stationId, stationName, stationCategory } = route.params;
+  const { stationId, stationName, stationCategory, distance } = route.params;
 
-  // Clean the station name (remove coordinates if present)
   const displayStationName = stationName.split("_")[0];
 
   const [images, setImages] = useState([]);
@@ -99,7 +98,7 @@ const DetailsScreen = ({ route, navigation }) => {
         <Text style={styles.estimatedTimeText}>
           Waiting Time: {estimatedTime} (Estimated)
         </Text>
-        <Text style={styles.estimatedTimeText}>Distance: -</Text>
+        <Text style={styles.estimatedTimeText}>Distance: {distance}</Text>
         <Button title="Refresh" onPress={handleRefresh} />
 
         {images.length > 0 && (

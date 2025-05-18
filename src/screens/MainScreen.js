@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, StyleSheet, FlatList } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  FlatList,
+  LogBox,
+} from "react-native";
+import * as Location from "expo-location";
+import Constants from "expo-constants";
 import {
   Card,
   Button,
@@ -11,43 +20,53 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { useNavigation } from "@react-navigation/native";
 import { storage } from "../../firebaseConfig";
 import { ref, listAll, getDownloadURL, getMetadata } from "firebase/storage";
+import { getRoadDistance } from "./getRoadDistance";
 
 const MainScreen = ({ email }) => {
   const navigation = useNavigation();
   const [stationType, setStationType] = useState("EV");
   const [searchQuery, setSearchQuery] = useState("");
-
   const [evStations, setEvStations] = useState([]);
   const [cngStations, setCngStations] = useState([]);
   const [petrolStations, setPetrolStations] = useState([]);
+  const [userCoords, setUserCoords] = useState(null);
+
+  const googleMapsApiKey =
+    Constants.expoConfig?.extra?.googleMapsApiKey || "API Key not found";
 
   const fetchStations = async (category, setStations) => {
     try {
       const folderRef = ref(storage, category);
       const result = await listAll(folderRef);
-
       const stations = await Promise.all(
         result.prefixes.map(async (folder) => {
           const parts = folder.name.split("_");
           const cleanName = parts[0];
           const latitude = parts.length > 1 ? parseFloat(parts[1]) : null;
           const longitude = parts.length > 2 ? parseFloat(parts[2]) : null;
-
           const waitTime = await fetchLatestWaitTime(category, folder.name);
+          let distance = "N/A";
+
+          if (userCoords && latitude && longitude) {
+            const calculatedDistance = await getRoadDistance(userCoords, {
+              latitude,
+              longitude,
+            });
+            distance = calculatedDistance ? `${calculatedDistance} KM` : "N/A";
+          }
 
           return {
             id: folder.fullPath,
-            fullName: folder.name, // this is used for Firebase reference
-            name: cleanName, // this is used for display
+            fullName: folder.name,
+            name: cleanName,
             latitude,
             longitude,
             waitTime: waitTime || "N/A",
-            distance: "0 KM",
+            distance,
             type: category,
           };
         })
       );
-
       setStations(stations);
     } catch (error) {
       console.error(`Error fetching ${category} stations:`, error);
@@ -58,9 +77,7 @@ const MainScreen = ({ email }) => {
     try {
       const stationRef = ref(storage, `${category}/${stationName}`);
       const fileList = await listAll(stationRef);
-
       if (fileList.items.length === 0) return "N/A";
-
       const fileData = await Promise.all(
         fileList.items.map(async (file) => {
           const metadata = await getMetadata(file);
@@ -70,13 +87,10 @@ const MainScreen = ({ email }) => {
           };
         })
       );
-
       fileData.sort((a, b) => b.timeCreated - a.timeCreated);
       const latestFile = fileData[0].file;
-
       const [countPart] = latestFile.name.replace(".jpg", "").split("_");
       const vehicleCount = parseInt(countPart.replace("C", "")) || 1;
-
       return calculateEstimatedTime(vehicleCount, category);
     } catch (error) {
       console.error(`Error fetching wait time for ${stationName}:`, error);
@@ -86,7 +100,6 @@ const MainScreen = ({ email }) => {
 
   const calculateEstimatedTime = (vehicleCount, category) => {
     let time = 0;
-
     switch (category) {
       case "EV":
         time = vehicleCount * 10;
@@ -104,14 +117,30 @@ const MainScreen = ({ email }) => {
   };
 
   useEffect(() => {
-    if (stationType === "EV") {
-      fetchStations("EV", setEvStations);
-    } else if (stationType === "CNG") {
-      fetchStations("CNG", setCngStations);
-    } else if (stationType === "PETROL") {
-      fetchStations("PETROL", setPetrolStations);
+    const getLocation = async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        console.error("Permission to access location was denied");
+        return;
+      }
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
+      setUserCoords({ latitude, longitude });
+    };
+    getLocation();
+  }, []);
+
+  useEffect(() => {
+    if (userCoords) {
+      if (stationType === "EV") {
+        fetchStations("EV", setEvStations);
+      } else if (stationType === "CNG") {
+        fetchStations("CNG", setCngStations);
+      } else if (stationType === "PETROL") {
+        fetchStations("PETROL", setPetrolStations);
+      }
     }
-  }, [stationType]);
+  }, [stationType, userCoords]);
 
   const filteredStations = (
     stationType === "EV"
@@ -134,8 +163,9 @@ const MainScreen = ({ email }) => {
           onPress={() =>
             navigation.navigate("Details", {
               stationId: item.id,
-              stationName: item.fullName, // full folder name
+              stationName: item.fullName,
               stationCategory: stationType,
+              distance: item.distance,
             })
           }
           style={styles.detailsButton}
