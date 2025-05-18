@@ -7,6 +7,9 @@ import { Appbar } from "react-native-paper";
 const DetailsScreen = ({ route, navigation }) => {
   const { stationId, stationName, stationCategory } = route.params;
 
+  // Clean the station name (remove coordinates if present)
+  const displayStationName = stationName.split("_")[0];
+
   const [images, setImages] = useState([]);
   const [vehicleCounts, setVehicleCounts] = useState([]);
   const [timestamps, setTimestamps] = useState([]);
@@ -92,7 +95,7 @@ const DetailsScreen = ({ route, navigation }) => {
       </Appbar.Header>
 
       <View style={styles.detailsContainer}>
-        <Text style={styles.stationName}>Station: {stationName}</Text>
+        <Text style={styles.stationName}>Station: {displayStationName}</Text>
         <Text style={styles.estimatedTimeText}>
           Waiting Time: {estimatedTime} (Estimated)
         </Text>

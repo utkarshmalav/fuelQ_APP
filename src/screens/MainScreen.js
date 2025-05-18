@@ -28,14 +28,19 @@ const MainScreen = ({ email }) => {
 
       const stations = await Promise.all(
         result.prefixes.map(async (folder) => {
-          const stationName = folder.name;
-          const stationId = folder.fullPath;
+          const parts = folder.name.split("_");
+          const cleanName = parts[0];
+          const latitude = parts.length > 1 ? parseFloat(parts[1]) : null;
+          const longitude = parts.length > 2 ? parseFloat(parts[2]) : null;
 
-          const waitTime = await fetchLatestWaitTime(category, stationName);
+          const waitTime = await fetchLatestWaitTime(category, folder.name);
 
           return {
-            id: stationId,
-            name: stationName,
+            id: folder.fullPath,
+            fullName: folder.name, // this is used for Firebase reference
+            name: cleanName, // this is used for display
+            latitude,
+            longitude,
             waitTime: waitTime || "N/A",
             distance: "0 KM",
             type: category,
@@ -129,7 +134,7 @@ const MainScreen = ({ email }) => {
           onPress={() =>
             navigation.navigate("Details", {
               stationId: item.id,
-              stationName: item.name,
+              stationName: item.fullName, // full folder name
               stationCategory: stationType,
             })
           }
