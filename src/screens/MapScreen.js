@@ -12,26 +12,31 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
 } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from "react-native-maps";
+import MapView, {
+  Marker,
+  PROVIDER_GOOGLE,
+  Polyline,
+  Callout,
+} from "react-native-maps";
 import * as Location from "expo-location";
 import Constants from "expo-constants";
 import { getRoadDistance } from "./getRoadDistance";
 import PolylineDecoder from "polyline-encoded";
-
 import { MenuProvider } from "react-native-popup-menu";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import StationData from "./StationData.js";
-
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 const { height: screenHeight } = Dimensions.get("window");
 
 const FILTER_OPTIONS = [
   { key: "all", label: "All" },
-  { key: "petrol", label: "Petrol/Diesel" },
   { key: "cng", label: "CNG" },
   { key: "ev", label: "EV" },
+  { key: "petrol", label: "Petrol/Diesel" },
 ];
 
 const MapScreen = () => {
+    const navigation = useNavigation();
   const googleMapsApiKey =
     Constants.expoConfig?.extra?.googleMapsApiKey || "API Key not found";
 
@@ -42,6 +47,7 @@ const MapScreen = () => {
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [selectedStationDistance, setSelectedStationDistance] = useState(null);
   const [filterVisible, setFilterVisible] = useState(false);
+  const [selectedStationInfo, setSelectedStationInfo] = useState(null);
 
   const filterAnim = useRef(new Animated.Value(0)).current;
 
@@ -132,6 +138,8 @@ const MapScreen = () => {
 
   const onMarkerPress = async (station) => {
     setSelectedStationDistance(null);
+    setSelectedStationInfo(null); 
+
     if (!location.latitude || !location.longitude) return;
 
     try {
@@ -140,6 +148,11 @@ const MapScreen = () => {
         { latitude: station.latitude, longitude: station.longitude }
       );
       setSelectedStationDistance(distance);
+      setSelectedStationInfo({
+        name: station.name,
+        latitude: station.latitude,
+        longitude: station.longitude,
+      });
 
       if (station.routes?.[0]?.geometry) {
         const decoded = PolylineDecoder.decode(station.routes[0].geometry);
@@ -147,7 +160,8 @@ const MapScreen = () => {
       } else {
         setRouteCoordinates([]);
       }
-    } catch {
+    } catch (error) {
+      console.error("Error fetching distance:", error);
       setRouteCoordinates([]);
     }
   };
@@ -182,28 +196,11 @@ const MapScreen = () => {
   });
 
   const getMarkerIcon = (station) => {
-    if (station.petrol || station.diesel) return { name: "gas-station", color: "blue" };
+    if (station.petrol || station.diesel)
+      return { name: "gas-station", color: "blue" };
     if (station.ev) return { name: "car-electric", color: "green" };
     if (station.cng) return { name: "fire", color: "red" };
     return { name: "map-marker", color: "gray" };
-  };
-
-  const getFuelText = (station) => {
-    const types = [];
-    if (station.petrol) types.push("Petrol");
-    if (station.diesel) types.push("Diesel");
-    if (station.ev) types.push("EV");
-    if (station.cng) types.push("CNG");
-    return types.join(", ");
-  };
-
-  const onArrowPress = (station, distance) => {
-    Alert.alert(
-      "Station Info",
-      `Name: ${station.name}\nLatitude: ${station.latitude}\nLongitude: ${station.longitude}\nDistance: ${
-        distance ? distance + " km" : "N/A"
-      }`
-    );
   };
 
   return (
@@ -228,7 +225,12 @@ const MapScreen = () => {
               </TouchableOpacity>
             )}
             <TouchableOpacity onPress={() => {}}>
-              <Icon name="magnify" size={24} color="gray" style={{ marginRight: 10 }} />
+              <Icon
+                name="magnify"
+                size={24}
+                color="gray"
+                style={{ marginRight: 10 }}
+              />
             </TouchableOpacity>
           </View>
 
@@ -277,6 +279,13 @@ const MapScreen = () => {
         >
           {filteredStations.map((station) => {
             const { name: iconName, color: iconColor } = getMarkerIcon(station);
+
+            const availableTypes = [];
+            if (station.petrol) availableTypes.push("Petrol");
+            if (station.diesel) availableTypes.push("Diesel");
+            if (station.cng) availableTypes.push("CNG");
+            if (station.ev) availableTypes.push("EV");
+
             return (
               <Marker
                 key={station.id}
@@ -285,195 +294,250 @@ const MapScreen = () => {
                   latitude: station.latitude,
                   longitude: station.longitude,
                 }}
-                onPress={() => onMarkerPress(station)}
                 title={station.name}
-                description={`${getFuelText(station)} ${
-                  selectedStationDistance ? `(${selectedStationDistance} km)` : ""
-                }`}
+                description={`Avialable : ${availableTypes.join(", ")}`}
+                onPress={() => onMarkerPress(station)}
               >
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Icon name={iconName} size={22} color={iconColor} />
-                  <TouchableOpacity
-                    onPress={() => onArrowPress(station, selectedStationDistance)}
-                    style={{ marginLeft: 8, padding: 4 }}
-                  >
-                    <Icon name="arrow-right" size={18} color="#007AFF" />
-                  </TouchableOpacity>
-                </View>
+                <Icon name={iconName} size={22} color={iconColor} />
               </Marker>
             );
           })}
 
           {routeCoordinates.length > 0 && (
             <Polyline
-              coordinates={routeCoordinates.map(([lat, lng]) => ({
+              coordinates={routeCoordinates.map(([lat, lon]) => ({
                 latitude: lat,
-                longitude: lng,
+                longitude: lon,
               }))}
-              strokeColor="blue"
-              strokeWidth={5}
+              strokeColor="#009688"
+              strokeWidth={4}
             />
           )}
         </MapView>
 
-        <View style={styles.controlsContainer}>
-          <TouchableOpacity
-            onPress={toggleFilterPanel}
-            style={styles.filterButton}
-            activeOpacity={0.8}
-          >
-            <Icon name="filter" size={28} color="#007AFF" />
-          </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.myLocationButton}
+          onPress={recenterMap}
+          activeOpacity={0.7}
+        >
+          <Icon name="crosshairs-gps" size={30} color="white" />
+        </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.filterToggleButton}
+          onPress={toggleFilterPanel}
+          activeOpacity={0.8}
+        >
+          <Icon name="filter-variant" size={24} color="white" />
+        </TouchableOpacity>
+
+        {selectedStationDistance !== null && (
           <TouchableOpacity
-            onPress={recenterMap}
-            style={styles.locationButton}
+            style={styles.distanceBox}
+            onPress={() => {
+              if (!selectedStationInfo || !selectedStationDistance) {
+                Alert.alert("No station info available");
+                return;
+              }
+
+              const formattedName = `${selectedStationInfo.name}_${selectedStationInfo.latitude}_${selectedStationInfo.longitude}`;
+
+              navigation.navigate("Details", {
+                stationName: formattedName,
+                stationCategory: "EV",
+                distance: selectedStationDistance,
+              });
+            }}
             activeOpacity={0.8}
           >
-            <Icon name="crosshairs-gps" size={32} color="#007AFF" />
+            <Text style={{ color: "white", fontWeight: "bold" }}>
+              Distance: {selectedStationDistance} km
+            </Text>
+            <Icon name="arrow-right" size={20} color="white" />
           </TouchableOpacity>
-        </View>
+        )}
 
         {filterVisible && (
           <TouchableWithoutFeedback onPress={toggleFilterPanel}>
-            <View style={styles.filterOverlay}>
-              <Animated.View
-                style={[styles.filterPanel, { transform: [{ translateY: filterTranslateY }] }]}
-              >
-                <Text style={styles.filterTitle}>Select Fuel Type</Text>
-                {FILTER_OPTIONS.map(({ key, label }) => {
-                  const selected = selectedFilter === key;
-                  return (
-                    <TouchableOpacity
-                      key={key}
-                      style={[styles.filterOption, selected && styles.filterOptionSelected]}
-                      onPress={() => onSelectFilter(key)}
-                      activeOpacity={0.7}
-                    >
-                      <Text
-                        style={[
-                          styles.filterOptionText,
-                          selected && styles.filterOptionTextSelected,
-                        ]}
-                      >
-                        {label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </Animated.View>
-            </View>
+            <View style={styles.filterBackdrop} />
           </TouchableWithoutFeedback>
         )}
+
+        <Animated.View
+          style={[
+            styles.filterPanel,
+            {
+              transform: [{ translateY: filterTranslateY }],
+            },
+          ]}
+        >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {FILTER_OPTIONS.map(({ key, label }) => (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.filterOption,
+                  selectedFilter === key && styles.filterOptionSelected,
+                ]}
+                onPress={() => onSelectFilter(key)}
+              >
+                <Text
+                  style={[
+                    styles.filterOptionText,
+                    selectedFilter === key && styles.filterOptionTextSelected,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </Animated.View>
       </View>
     </MenuProvider>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8f8f8" },
-  map: { ...StyleSheet.absoluteFillObject },
+  container: { flex: 1 },
+  map: { flex: 1 },
   searchContainer: {
     position: "absolute",
     top: 40,
     left: 10,
     right: 10,
-    zIndex: 3,
+    zIndex: 10,
   },
-  searchBar: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    padding: 6,
-    borderRadius: 30,
-    alignItems: "center",
-    elevation: 1,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    fontSize: 16,
-    paddingLeft: 12,
-  },
+searchBar: {
+  flexDirection: "row",
+  backgroundColor: "#f9f9f9",
+  borderRadius: 40,
+  alignItems: "center",
+  paddingHorizontal: 10,
+  paddingVertical: 2,
+  borderWidth: 1,
+  borderColor: "#ddd",
+  shadowColor: "#000",
+  shadowOpacity: 0.05,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 1 },
+  elevation: 4,
+},
+
+searchInput: {
+  flex: 1,
+  fontSize: 14,
+  paddingHorizontal: 10,
+  color: "#333",
+},
+
   searchResults: {
+    marginTop: 5,
     maxHeight: 200,
     backgroundColor: "#fff",
-    borderRadius: 10,
+    borderRadius: 20,
     elevation: 5,
-    marginTop: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
   searchResultItem: {
     padding: 10,
+    left:10,
     borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
+    borderColor: "#eee",
   },
   noResults: {
-    padding: 20,
-    alignItems: "center",
+    padding: 10,
   },
-  controlsContainer: {
+  myLocationButton: {
+    position: "absolute",
+    bottom: 75,
+    right: 15,
+    backgroundColor: "#009688",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  filterToggleButton: {
     position: "absolute",
     bottom: 15,
-    right: 10,
-    alignItems: "center",
-  },
-  filterButton: {
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 50,
-    marginBottom: 12,
-    elevation: 3,
+    right: 15,
+    backgroundColor: "#009688",
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
   },
-  locationButton: {
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 50,
-    elevation: 3,
-    justifyContent: "center",
+  distanceBox: {
+    position: "absolute",
+    bottom: 140,
+    right: 15,
+    backgroundColor: "#009688",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 25,
+    flexDirection: "row",
     alignItems: "center",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
   },
-  filterOverlay: {
+  filterBackdrop: {
     position: "absolute",
     top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  filterPanel: {
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "flex-end",
-    zIndex: 10,
-  },
-  filterPanel: {
     backgroundColor: "#fff",
-    paddingHorizontal: 20,
-    paddingVertical: 25,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    elevation: 10,
-  },
-  filterTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 15,
-    textAlign: "center",
+    paddingVertical: 15,
+    elevation: 15,
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -5 },
   },
   filterOption: {
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginVertical: 5,
-    backgroundColor: "#f2f2f2",
-    alignItems: "center",
+    marginHorizontal: 15,
+    paddingVertical: 6,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: "#009688",
   },
   filterOptionSelected: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#009688",
   },
   filterOptionText: {
-    fontSize: 16,
-    color: "#333",
+    color: "#009688",
+    fontWeight: "bold",
+    fontSize: 14,
   },
   filterOptionTextSelected: {
     color: "#fff",
-    fontWeight: "bold",
   },
 });
 

@@ -8,6 +8,7 @@ const DetailsScreen = ({ route, navigation }) => {
   const { stationId, stationName, stationCategory, distance } = route.params;
 
   const displayStationName = stationName.split("_")[0];
+  // const displayStationName = stationName+stationCategory;
 
   const [images, setImages] = useState([]);
   const [vehicleCounts, setVehicleCounts] = useState([]);
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "flex-start",
     alignItems: "flex-start",
-    marginTop: 20,
+    marginTop: 0,
     marginLeft: 20,
   },
   stationName: {

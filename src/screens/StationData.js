@@ -25,7 +25,7 @@ const StationData = [
   { id: 24, name: "E-Refill Charging Station", latitude: 16.6827233, longitude: 74.2719042, petrol: 0, diesel: 0, cng: 0, ev: 1 },
   { id: 25, name: "Sayaji Hotel EV Station", latitude: 16.7040405, longitude: 74.2507048, petrol: 0, diesel: 0, cng: 0, ev: 1 },
   { id: 26, name: "E Fill Electric Charging Station", latitude: 16.7013912, longitude: 74.2546376, petrol: 0, diesel: 0, cng: 0, ev: 1 },
-  { id: 27, name: "DYP City Mall Charging Station", latitude: 16.7034, longitude: 74.2504437, petrol: 0, diesel: 0, cng: 0, ev: 1 },
+  { id: 27, name: "DYP", latitude: 16.7034, longitude: 74.2504437, petrol: 0, diesel: 0, cng: 0, ev: 1 },
   { id: 28, name: "EV-novator Charging Station", latitude: 16.757655, longitude: 74.277719, petrol: 0, diesel: 0, cng: 0, ev: 1 },
   { id: 29, name: "Vijaya Power Charging Station", latitude: 16.782245, longitude: 74.2782748, petrol: 0, diesel: 0, cng: 0, ev: 1 },
   { id: 30, name: "LionCharge Charging Station", latitude: 16.6871116, longitude: 74.2730032, petrol: 0, diesel: 0, cng: 0, ev: 1 },

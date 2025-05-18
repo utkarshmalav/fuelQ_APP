@@ -1,12 +1,5 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  FlatList,
-  LogBox,
-} from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, TextInput, StyleSheet, FlatList } from "react-native";
 import * as Location from "expo-location";
 import Constants from "expo-constants";
 import {
@@ -17,7 +10,7 @@ import {
   IconButton,
 } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { storage } from "../../firebaseConfig";
 import { ref, listAll, getDownloadURL, getMetadata } from "firebase/storage";
 import { getRoadDistance } from "./getRoadDistance";
@@ -26,34 +19,24 @@ const MainScreen = ({ email }) => {
   const navigation = useNavigation();
   const [stationType, setStationType] = useState("EV");
   const [searchQuery, setSearchQuery] = useState("");
-  const [evStations, setEvStations] = useState([]);
-  const [cngStations, setCngStations] = useState([]);
-  const [petrolStations, setPetrolStations] = useState([]);
+  const [stations, setStations] = useState([]);
   const [userCoords, setUserCoords] = useState(null);
 
   const googleMapsApiKey =
     Constants.expoConfig?.extra?.googleMapsApiKey || "API Key not found";
 
-  const fetchStations = async (category, setStations) => {
+  const fetchStations = async (category) => {
     try {
       const folderRef = ref(storage, category);
       const result = await listAll(folderRef);
-      const stations = await Promise.all(
+
+      const initialStations = await Promise.all(
         result.prefixes.map(async (folder) => {
           const parts = folder.name.split("_");
           const cleanName = parts[0];
           const latitude = parts.length > 1 ? parseFloat(parts[1]) : null;
           const longitude = parts.length > 2 ? parseFloat(parts[2]) : null;
           const waitTime = await fetchLatestWaitTime(category, folder.name);
-          let distance = "N/A";
-
-          if (userCoords && latitude && longitude) {
-            const calculatedDistance = await getRoadDistance(userCoords, {
-              latitude,
-              longitude,
-            });
-            distance = calculatedDistance ? `${calculatedDistance} KM` : "N/A";
-          }
 
           return {
             id: folder.fullPath,
@@ -62,12 +45,35 @@ const MainScreen = ({ email }) => {
             latitude,
             longitude,
             waitTime: waitTime || "N/A",
-            distance,
+            distance: "Loading...",
             type: category,
           };
         })
       );
-      setStations(stations);
+
+      setStations(initialStations);
+
+      // Fetch distances asynchronously
+      if (userCoords) {
+        const updatedStations = await Promise.all(
+          initialStations.map(async (station) => {
+            if (station.latitude && station.longitude) {
+              const calculatedDistance = await getRoadDistance(userCoords, {
+                latitude: station.latitude,
+                longitude: station.longitude,
+              });
+              return {
+                ...station,
+                distance: calculatedDistance
+                  ? `${calculatedDistance} KM`
+                  : "N/A",
+              };
+            }
+            return station;
+          })
+        );
+        setStations(updatedStations);
+      }
     } catch (error) {
       console.error(`Error fetching ${category} stations:`, error);
     }
@@ -78,6 +84,7 @@ const MainScreen = ({ email }) => {
       const stationRef = ref(storage, `${category}/${stationName}`);
       const fileList = await listAll(stationRef);
       if (fileList.items.length === 0) return "N/A";
+
       const fileData = await Promise.all(
         fileList.items.map(async (file) => {
           const metadata = await getMetadata(file);
@@ -87,6 +94,7 @@ const MainScreen = ({ email }) => {
           };
         })
       );
+
       fileData.sort((a, b) => b.timeCreated - a.timeCreated);
       const latestFile = fileData[0].file;
       const [countPart] = latestFile.name.replace(".jpg", "").split("_");
@@ -130,25 +138,13 @@ const MainScreen = ({ email }) => {
     getLocation();
   }, []);
 
-  useEffect(() => {
-    if (userCoords) {
-      if (stationType === "EV") {
-        fetchStations("EV", setEvStations);
-      } else if (stationType === "CNG") {
-        fetchStations("CNG", setCngStations);
-      } else if (stationType === "PETROL") {
-        fetchStations("PETROL", setPetrolStations);
-      }
-    }
-  }, [stationType, userCoords]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchStations(stationType);
+    }, [stationType, userCoords])
+  );
 
-  const filteredStations = (
-    stationType === "EV"
-      ? evStations
-      : stationType === "CNG"
-      ? cngStations
-      : petrolStations
-  ).filter((station) =>
+  const filteredStations = stations.filter((station) =>
     station.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
