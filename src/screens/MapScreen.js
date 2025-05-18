@@ -7,81 +7,96 @@ import {
   Alert,
   TextInput,
   ScrollView,
+  Animated,
+  Easing,
+  Dimensions,
+  TouchableWithoutFeedback,
 } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker, PROVIDER_GOOGLE, Polyline } from "react-native-maps";
 import * as Location from "expo-location";
 import Constants from "expo-constants";
-import {
-  MenuProvider,
-  Menu,
-  MenuOptions,
-  MenuOption,
-  MenuTrigger,
-} from "react-native-popup-menu";
+import { getRoadDistance } from "./getRoadDistance";
+import PolylineDecoder from "polyline-encoded";
+
+import { MenuProvider } from "react-native-popup-menu";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import StationData from "./StationData.js"; 
+import StationData from "./StationData.js";
+
+const { height: screenHeight } = Dimensions.get("window");
+
+const FILTER_OPTIONS = [
+  { key: "all", label: "All" },
+  { key: "petrol", label: "Petrol/Diesel" },
+  { key: "cng", label: "CNG" },
+  { key: "ev", label: "EV" },
+];
 
 const MapScreen = () => {
   const googleMapsApiKey =
     Constants.expoConfig?.extra?.googleMapsApiKey || "API Key not found";
 
-  const [location, setLocation] = useState({
-    latitude: 0,
-    longitude: 0,
-  });
+  const [location, setLocation] = useState({ latitude: 0, longitude: 0 });
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+  const [routeCoordinates, setRouteCoordinates] = useState([]);
+  const [selectedStationDistance, setSelectedStationDistance] = useState(null);
+  const [filterVisible, setFilterVisible] = useState(false);
+
+  const filterAnim = useRef(new Animated.Value(0)).current;
+
   const mapRef = useRef(null);
   const markerRefs = useRef({});
 
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permission Denied", "Location permission is required.");
         return;
       }
 
-      const locationSubscription = await Location.watchPositionAsync(
+      const subscription = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
           timeInterval: 5000,
           distanceInterval: 10,
         },
-        (newLocation) => {
-          setLocation(newLocation.coords); 
-        }
+        (newLocation) => setLocation(newLocation.coords)
       );
 
-      return () => locationSubscription.remove();
+      return () => subscription.remove();
     })();
   }, []);
 
   const recenterMap = () => {
-    if (location && mapRef.current) {
-      mapRef.current.animateToRegion(
-        {
-          latitude: location.latitude || 0, 
-          longitude: location.longitude || 0, 
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        },
-        2000
-      );
-    }
+    if (!mapRef.current || !location.latitude || !location.longitude) return;
+    mapRef.current.animateToRegion(
+      {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      },
+      2000
+    );
   };
 
-  const handleSearch = () => {
-    const matches = StationData.filter((station) =>
+  useEffect(() => {
+    if (searchText.trim() === "") {
+      setSearchResults([]);
+      return;
+    }
+    const filtered = StationData.filter((station) =>
       station.name.toLowerCase().includes(searchText.toLowerCase())
     );
-    setSearchResults(matches);
-  };
+    setSearchResults(filtered);
+  }, [searchText]);
 
   const goToStation = (station) => {
     setSearchText("");
     setSearchResults([]);
+
     if (mapRef.current) {
       mapRef.current.animateToRegion(
         {
@@ -93,55 +108,103 @@ const MapScreen = () => {
         1000
       );
     }
+
     setTimeout(() => {
       markerRefs.current[station.id]?.showCallout();
     }, 1200);
-  };
 
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; 
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; 
-    return distance;
+    onMarkerPress(station);
   };
 
   const filteredStations = StationData.filter((station) => {
-    if (selectedFilter === "all") return true;
-    if (selectedFilter === "petrol") return station.petrol || station.diesel;
-    if (selectedFilter === "cng") return station.cng;
-    if (selectedFilter === "ev") return station.ev;
-    return false;
+    switch (selectedFilter) {
+      case "petrol":
+        return station.petrol || station.diesel;
+      case "cng":
+        return station.cng;
+      case "ev":
+        return station.ev;
+      case "all":
+      default:
+        return true;
+    }
   });
 
-  const addDistanceToStations = (stations) => {
-    return stations.map((station) => {
-      const distance = calculateDistance(
-        location.latitude,
-        location.longitude,
-        station.latitude,
-        station.longitude
+  const onMarkerPress = async (station) => {
+    setSelectedStationDistance(null);
+    if (!location.latitude || !location.longitude) return;
+
+    try {
+      const distance = await getRoadDistance(
+        { latitude: location.latitude, longitude: location.longitude },
+        { latitude: station.latitude, longitude: station.longitude }
       );
-      return { ...station, distance };
-    });
+      setSelectedStationDistance(distance);
+
+      if (station.routes?.[0]?.geometry) {
+        const decoded = PolylineDecoder.decode(station.routes[0].geometry);
+        setRouteCoordinates(decoded);
+      } else {
+        setRouteCoordinates([]);
+      }
+    } catch {
+      setRouteCoordinates([]);
+    }
   };
 
-  useEffect(() => {
-    if (searchText.trim() === "") {
-      setSearchResults([]);
+  const toggleFilterPanel = () => {
+    if (filterVisible) {
+      Animated.timing(filterAnim, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start(() => setFilterVisible(false));
     } else {
-      handleSearch();
+      setFilterVisible(true);
+      Animated.timing(filterAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
     }
-  }, [searchText]);
+  };
 
-  const stationsWithDistance = addDistanceToStations(filteredStations);
+  const onSelectFilter = (key) => {
+    setSelectedFilter(key);
+    toggleFilterPanel();
+  };
+
+  const filterTranslateY = filterAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [200, 0],
+  });
+
+  const getMarkerIcon = (station) => {
+    if (station.petrol || station.diesel) return { name: "gas-station", color: "blue" };
+    if (station.ev) return { name: "car-electric", color: "green" };
+    if (station.cng) return { name: "fire", color: "red" };
+    return { name: "map-marker", color: "gray" };
+  };
+
+  const getFuelText = (station) => {
+    const types = [];
+    if (station.petrol) types.push("Petrol");
+    if (station.diesel) types.push("Diesel");
+    if (station.ev) types.push("EV");
+    if (station.cng) types.push("CNG");
+    return types.join(", ");
+  };
+
+  const onArrowPress = (station, distance) => {
+    Alert.alert(
+      "Station Info",
+      `Name: ${station.name}\nLatitude: ${station.latitude}\nLongitude: ${station.longitude}\nDistance: ${
+        distance ? distance + " km" : "N/A"
+      }`
+    );
+  };
 
   return (
     <MenuProvider>
@@ -164,15 +227,11 @@ const MapScreen = () => {
                 <Icon name="close" size={22} color="gray" />
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={handleSearch}>
-              <Icon
-                name="magnify"
-                size={24}
-                color="gray"
-                style={{ marginRight: 10 }}
-              />
+            <TouchableOpacity onPress={() => {}}>
+              <Icon name="magnify" size={24} color="gray" style={{ marginRight: 10 }} />
             </TouchableOpacity>
           </View>
+
           {searchText !== "" && (
             <ScrollView style={styles.searchResults} nestedScrollEnabled={true}>
               {searchResults.length === 0 ? (
@@ -185,12 +244,10 @@ const MapScreen = () => {
                 searchResults.map((station) => (
                   <TouchableOpacity
                     key={station.id}
-                    onPress={() => goToStation(station)}
                     style={styles.searchResultItem}
+                    onPress={() => goToStation(station)}
                   >
-                    <Text>
-                      {station.name}
-                    </Text>
+                    <Text>{station.name}</Text>
                   </TouchableOpacity>
                 ))
               )}
@@ -218,27 +275,8 @@ const MapScreen = () => {
             { featureType: "administrative", stylers: [{ visibility: "off" }] },
           ]}
         >
-          {stationsWithDistance.map((station) => {
-            let iconName = "gas-station";
-            let iconColor = "blue";
-
-            if (station.petrol || station.diesel) {
-              iconName = "gas-station";
-              iconColor = "blue";
-            } else if (station.ev) {
-              iconName = "car-electric";
-              iconColor = "green";
-            } else if (station.cng) {
-              iconName = "fire";
-              iconColor = "red";
-            }
-
-            let availableTypes = [];
-            if (station.petrol) availableTypes.push("Petrol");
-            if (station.diesel) availableTypes.push("Diesel");
-            if (station.cng) availableTypes.push("CNG");
-            if (station.ev) availableTypes.push("EV");
-
+          {filteredStations.map((station) => {
+            const { name: iconName, color: iconColor } = getMarkerIcon(station);
             return (
               <Marker
                 key={station.id}
@@ -247,165 +285,105 @@ const MapScreen = () => {
                   latitude: station.latitude,
                   longitude: station.longitude,
                 }}
+                onPress={() => onMarkerPress(station)}
                 title={station.name}
-                description={`${availableTypes.join(
-                  ", "
-                )} (${station.distance.toFixed(2)} km)`}
+                description={`${getFuelText(station)} ${
+                  selectedStationDistance ? `(${selectedStationDistance} km)` : ""
+                }`}
               >
-                <Icon name={iconName} size={22} color={iconColor} />
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Icon name={iconName} size={22} color={iconColor} />
+                  <TouchableOpacity
+                    onPress={() => onArrowPress(station, selectedStationDistance)}
+                    style={{ marginLeft: 8, padding: 4 }}
+                  >
+                    <Icon name="arrow-right" size={18} color="#007AFF" />
+                  </TouchableOpacity>
+                </View>
               </Marker>
             );
           })}
+
+          {routeCoordinates.length > 0 && (
+            <Polyline
+              coordinates={routeCoordinates.map(([lat, lng]) => ({
+                latitude: lat,
+                longitude: lng,
+              }))}
+              strokeColor="blue"
+              strokeWidth={5}
+            />
+          )}
         </MapView>
 
-        <View style={styles.filterContainer}>
-          <Menu>
-            <MenuTrigger>
-              <Icon
-                name="filter"
-                size={24}
-                color="gray"
-                style={styles.filterIcon}
-              />
-            </MenuTrigger>
-            <MenuOptions style={styles.menuOptions}>
-              <View style={styles.menuHeader}>
-                <Text style={styles.menuHeaderText}>Sort by</Text>
-              </View>
-              <MenuOption onSelect={() => setSelectedFilter("all")}>
-                <View
-                  style={[
-                    styles.menuItem,
-                    selectedFilter === "all" && styles.selectedMenuItem,
-                  ]}
-                >
-                  <Icon name="filter-outline" size={20} color="black" />
-                  <Text style={styles.menuText}> Show All</Text>
-                </View>
-              </MenuOption>
-              <MenuOption onSelect={() => setSelectedFilter("ev")}>
-                <View
-                  style={[
-                    styles.menuItem,
-                    selectedFilter === "ev" && styles.selectedMenuItem,
-                  ]}
-                >
-                  <Icon name="car-electric" size={20} color="green" />
-                  <Text style={styles.menuText}> Nearby EV Stations</Text>
-                </View>
-              </MenuOption>
-              <MenuOption onSelect={() => setSelectedFilter("cng")}>
-                <View
-                  style={[
-                    styles.menuItem,
-                    selectedFilter === "cng" && styles.selectedMenuItem,
-                  ]}
-                >
-                  <Icon name="fire" size={20} color="red" />
-                  <Text style={styles.menuText}> Nearby CNG Stations</Text>
-                </View>
-              </MenuOption>
-              <MenuOption onSelect={() => setSelectedFilter("petrol")}>
-                <View
-                  style={[
-                    styles.menuItem,
-                    selectedFilter === "petrol" && styles.selectedMenuItem,
-                  ]}
-                >
-                  <Icon name="gas-station" size={20} color="blue" />
-                  <Text style={styles.menuText}> Nearby Petrol Pumps</Text>
-                </View>
-              </MenuOption>
-            </MenuOptions>
-          </Menu>
+        <View style={styles.controlsContainer}>
+          <TouchableOpacity
+            onPress={toggleFilterPanel}
+            style={styles.filterButton}
+            activeOpacity={0.8}
+          >
+            <Icon name="filter" size={28} color="#007AFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={recenterMap}
+            style={styles.locationButton}
+            activeOpacity={0.8}
+          >
+            <Icon name="crosshairs-gps" size={32} color="#007AFF" />
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.locationButton} onPress={recenterMap}>
-          <Icon name="crosshairs-gps" size={32} color="#007AFF" />
-        </TouchableOpacity>
+        {filterVisible && (
+          <TouchableWithoutFeedback onPress={toggleFilterPanel}>
+            <View style={styles.filterOverlay}>
+              <Animated.View
+                style={[styles.filterPanel, { transform: [{ translateY: filterTranslateY }] }]}
+              >
+                <Text style={styles.filterTitle}>Select Fuel Type</Text>
+                {FILTER_OPTIONS.map(({ key, label }) => {
+                  const selected = selectedFilter === key;
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      style={[styles.filterOption, selected && styles.filterOptionSelected]}
+                      onPress={() => onSelectFilter(key)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.filterOptionText,
+                          selected && styles.filterOptionTextSelected,
+                        ]}
+                      >
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </Animated.View>
+            </View>
+          </TouchableWithoutFeedback>
+        )}
       </View>
     </MenuProvider>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8f8f8",
-  },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  filterIcon: {
-    alignSelf: "center",
-  },
-  menuOptions: {
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 10,
-    elevation: 5,
-    width: 210,
-    position: "absolute",
-    right: 0,
-    bottom: 15,
-  },
-  menuHeader: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
-    paddingBottom: 5,
-    marginBottom: 5,
-  },
-  menuHeaderText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-  },
-  menuText: {
-    fontSize: 16,
-    marginLeft: 8,
-  },
-  selectedMenuItem: {
-    backgroundColor: "#e0e0e0",
-    borderRadius: 5,
-    padding: 0,
-    width: 190,
-  },
-  locationButton: {
-    position: "absolute",
-    bottom: 15,
-    right: 10,
-    backgroundColor: "#fff",
-    padding: 8,
-    borderRadius: 50,
-    elevation: 3,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  filterContainer: {
-    position: "absolute",
-    bottom: 75,
-    right: 10,
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 50,
-    elevation: 3,
-  },
+  container: { flex: 1, backgroundColor: "#f8f8f8" },
+  map: { ...StyleSheet.absoluteFillObject },
   searchContainer: {
     position: "absolute",
     top: 40,
     left: 10,
     right: 10,
-    zIndex: 1,
+    zIndex: 3,
   },
   searchBar: {
     flexDirection: "row",
     backgroundColor: "#fff",
-    padding: 3,
+    padding: 6,
     borderRadius: 30,
     alignItems: "center",
     elevation: 1,
@@ -414,7 +392,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     fontSize: 16,
-    paddingLeft: 10,
+    paddingLeft: 12,
   },
   searchResults: {
     maxHeight: 200,
@@ -431,6 +409,71 @@ const styles = StyleSheet.create({
   noResults: {
     padding: 20,
     alignItems: "center",
+  },
+  controlsContainer: {
+    position: "absolute",
+    bottom: 15,
+    right: 10,
+    alignItems: "center",
+  },
+  filterButton: {
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 50,
+    marginBottom: 12,
+    elevation: 3,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  locationButton: {
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 50,
+    elevation: 3,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  filterOverlay: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "flex-end",
+    zIndex: 10,
+  },
+  filterPanel: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 20,
+    paddingVertical: 25,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    elevation: 10,
+  },
+  filterTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  filterOption: {
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginVertical: 5,
+    backgroundColor: "#f2f2f2",
+    alignItems: "center",
+  },
+  filterOptionSelected: {
+    backgroundColor: "#007AFF",
+  },
+  filterOptionText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  filterOptionTextSelected: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
 

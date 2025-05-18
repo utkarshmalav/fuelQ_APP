@@ -28,3 +28,6 @@ npm install @expo/vector-icons@^14.0.4
 npm install react-native-popup-menu
 npm install geolib@^3.3.4
 npm install react-native-maps-directions
+
+npm install axios@^1.9.0
+npm install polyline-encoded
